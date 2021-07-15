@@ -1,0 +1,89 @@
+
+* {
+margin: 0px;
+padding: 0px;
+}
+
+body {
+  font-family: Trebuchet MS;
+  background-color: White;
+  font-size: 10pt;
+}
+
+
+li { 
+  margin-left: 1em;
+font-size: 11pt;
+}
+
+
+ul { 
+  margin-left: 2em;
+  list-style-type : square; 
+  padding-bottom: .5em;
+}
+
+ol { 
+  margin-left: 2em;
+  list-style-type : decimal; 
+  padding-bottom: .5em;
+}
+
+h3 {
+font-size: 12pt;
+font-weight: bold;
+padding-top: 1em;
+color: Teal
+}
+
+
+h2 {
+font-size: 16pt;
+font-weight: bold;
+color: Black
+}
+
+h1 {
+font-size: 14pt;
+font-weight: bold;
+color: Black
+}
+
+p {
+padding-bottom: .5em;
+}
+
+hr {
+color: Teal;
+height: 1px;
+border-style: dotted;
+margin-bottom: 10px
+}
+
+a, a:visited, a:hover, a:active {
+color: #088A85
+}
+
+#container {
+position: absolute;
+left: 50%;
+top: 0px;
+margin-top: 5px;
+margin-bottom: 5px;
+margin-left: -400px;
+width: 800px;
+clear: both;
+border-left: 2px solid Teal;
+border-right: 2px solid Teal;
+border-top: 2px solid Teal;
+border-bottom: 2px solid Teal;
+}
+
+#content {
+background: white none;
+padding-left: 20px;
+padding-right: 20px;
+padding-top: 20px;
+padding-bottom: 20px;
+}
+
