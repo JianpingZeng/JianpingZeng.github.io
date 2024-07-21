@@ -1,0 +1,623 @@
+MICRO-54 Paper #18 Reviews and Comments
+===========================================================================
+Paper #18 Turnpike: Lightweight Soft Error Resilience for In-Order Cores
+
+
+Review #18A
+===========================================================================
+
+Paper Summary
+-------------
+This paper presents a compiler-architecture co-design scheme to support acoustic sensor-based soft error detection in in-order cores. The key idea is to use compiler to reduce checkpointed stores by (i) performing store-aware register allocation to reduce memory writes, (ii) LICM to reduce the number of induction variables to be checkpointed, (iii) checkpoint prunning, (iv) moving checkpoint store out of a loop. In addition, the authors proposed early release of some stores to the cache by finding WAR-free stores in a region and by having alernate storge for overwrite protection. The authors did a complete evaluation of their system to show the it outperforms the existing scheme in in-order cores.
+
+Strengths
+---------
++ Use of compiler and hardware synergistically to support soft-error dectection in-order cores is very interesting.
++ Clearly written paper.
+
+Weaknesses
+----------
+- None
+
+Novelty
+-------
+3. New contribution
+
+Evaluation
+----------
+4. The evaluation is excellent and demonstrates the value of the idea
+
+Impact
+------
+3. Likely to impact future research and/or products
+
+Writing Quality
+---------------
+3. Adequate
+
+Reviewer expertise
+------------------
+3. Knowledgeable
+
+Questions for Revision/Rebuttal:
+--------------------------------
+None
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+2. Revision/Rebuttal would be nice, but not essential (though it would be
+   nice to see my concerns addressed)
+
+Comments to authors
+-------------------
+This is a very well-written paper. The paper presents a lot of ideas that work synergistically to provide acoustic sensor-based soft-error detection in-order cores. Basically the authors used compiler to reduce stores that need to be checkpointed or schedule instructions to reduce stalls that could happen during checkpointed stores. The hardware support allows the remaining stores to bypass verification by adding some extra checking or storage. Overall, I like this paper. Individual ideas may not be that novel or exciting. However, the authors combined them in a meaningful way. I specially liked the idea of hardware support for early release of stores to cache. This is a clever idea. The paper is easy to follow. The authors did a good job evaluating the idea and showed how it improved performance compared to a prior scheme for in-order cores.
+
+Overall Merit
+-------------
+5. Very good (A) -- High-quality paper that adds insight to the field
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+5. Very good (A) -- High-quality paper that adds insight to the field
+
+
+
+Review #18B
+===========================================================================
+
+Paper Summary
+-------------
+Authors propose Turnpike, a lightweight compiler/architecture co-design scheme to protect in-order cores from soft errors. A set of compiler optimizations are proposed to either reduce the number of required checkpoint instructions or delay them to hide the data hazard latency. In addition, two architectural changes are proposed to achieve fast release for WAR-free store instructions.
+
+Strengths
+---------
++Paper is well structured and easy to understand.
+
++Evaluations are comprehensive and cover a broad range of benchmarks.
+
++Proposed optimizations seem to be effective for reducing performance overhead.
+
+Weaknesses
+----------
+-Technical contribution made in this work is relatively low.
+
+-Area and energy costs are non-trivial, resulting some concerns for practical deployment.
+
+Novelty
+-------
+2. Incremental improvement
+
+Evaluation
+----------
+3. There are some minor issues with the evaluation, but they can be solved
+
+Impact
+------
+3. Likely to impact future research and/or products
+
+Writing Quality
+---------------
+3. Adequate
+
+Reviewer expertise
+------------------
+4. Expert
+
+Questions for Revision/Rebuttal:
+--------------------------------
+In normal situations, how many instructions are included in a single region, given the in-order core with 4 SB entries?
+
+In section 4.1.1, authors mentioned that some efforts are spent in maintaining the original register allocation quality. How to choose the proper cost for the write operation? Is there any extra analysis performed to maintain the quality?
+
+In section 4, there are a couple of compiler optimizations (LICM in 4.1.4 and instruction scheduling in 4.2) that try to delay/sink the checkpoint instruction. Is there any side effect on this? If it's completely safe, does the sink/delay method open further optimization opportunities?
+
+In Fig.19, the overhead is not always proportional to the WCDL, and DL40 seems to have higher overhead compared to DL50. Can authors comment on this?
+
+The evaluation for performance overhead only focuses on normal operations (without considering the recovery part). Since one of the optimizations (LIVM) does make the recovery code more complicated, it would be good to see authors discuss the extra cost for the recovery process.
+
+The area and energy cost (~10% in both case) only include the architectural changes made by Turnpike. However, there are also extra costs (production, area, and energy etc.) for hundreds of acoustic sensors deployed on the chip. What will be the total cost including everything?
+
+The acoustic sensor can achieve 100% detection accuracy on soft errors caused by particle strikes. Is it still effective to detect transient faults caused by other factors such as power fluctuations or vulnerable transistors?
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+2. Revision/Rebuttal would be nice, but not essential (though it would be
+   nice to see my concerns addressed)
+
+Comments to authors
+-------------------
+This paper propose some simple but effective optimizations to reduce the performance overhead for in-order core soft error resilience. I really appreciate Section 6.3 and Fig.21, which clearly shows the benefit of each technique. However, I have two major concerns about this work (please also try to address them):
+
+First, this paper tries to makes further improvements on the Turnstile work, but I feel the technical contribution presented in this work is relatively low. Although there are 5 compiler optimizations and 2 architectural changes discussed, most of compiler optimizations (checkpoint pruning, LICM, and instruction scheduling) rely on existing techniques. The LIVM (variable replacement) and the register allocation (cost tuning) techniques seem to be straightforward. In addition, the proposed 2 hardware changes (compact CLQ and memory coloring tables) to realize the fast release of WAR-free stores are also very intuitive. 
+
+Second, I'm a little concerned with the extra cost and the feasibility for the entire scheme (deploying hundreds of acoustic sensors on chip + 10% area&energy for Turnpike). The authors mentioned that the area cost for acoustic sensors is small enough, but finding a practical strategy to deploy 300 sensors on a simple in-order core chip sounds quite challenging. It would be great if authors can offer more evidences (energy cost, reliability of the sensors etc.) to demonstrate the Turnpike is a practical scheme for commodity in-order cores..
+
+Another thing: Authors state that 100% error resilience can be achieved by acoustic-sensor-based detection because of the physical phenomenon. Is it possible for authors to provide some fault injection experiment results to support this claim?
+
+Overall Merit
+-------------
+4. Good (B) -- Solid paper with some deficiencies
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+4. Good (B) -- Solid paper with some deficiencies
+
+
+
+Review #18C
+===========================================================================
+
+Paper Summary
+-------------
+This paper presents Turnpike, a CPU state checkpointing/recovery system optimized for in-order cores. Turnpike is designed to work with acoustic sensors that detect alpha particle strikes that can cause soft errors in CPUs. Turnpike builds on previously-proposed system, Turnstile, that was designed for out-of-order processors. Turnpike uses a set of hardware and compiler-based optimizations to reduce the checkpointing cost. For instance, it introduces an optimization to the register spilling algorithm that increases the cost of writes in the optimization function, thus reducing spillage of frequently written registers.
+
+Strengths
+---------
+- Paper addresses an important problem 
+- Straightforward design, small hardware overhead
+- Improved design and evaluation over prior submission
+
+Weaknesses
+----------
+- It is not clear that acoustic sensors make economic sense in low-cost in-order processors.
+
+Novelty
+-------
+2. Incremental improvement
+
+Evaluation
+----------
+3. There are some minor issues with the evaluation, but they can be solved
+
+Impact
+------
+2. Likely to have minor impact
+
+Writing Quality
+---------------
+3. Adequate
+
+Reviewer expertise
+------------------
+3. Knowledgeable
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+2. Revision/Rebuttal would be nice, but not essential (though it would be
+   nice to see my concerns addressed)
+
+Comments to authors
+-------------------
+I have reviewed this paper before and I believe this version is a significant improvement. In particular the paper now makes a convincing case that the proposed designs is significantly more efficient than simply increasing store buffer size. The compiler optimizations are a nice addition and the evaluation with SPLASH3 is an improvement. 
+
+While I appreciate the technical contributions, I remain unconvinced that the acoustic sensors make sense in a low-cost, in-order commercial system. These sensors have been proposed more than a decade ago and I don't know of any commercial deployment, even at the high end.
+
+Overall Merit
+-------------
+3. Average (C) -- Average-quality paper with many deficiencies that are
+   difficult to overlook. Describe changes needed for this paper to become
+   Good (B).
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+4. Good (B) -- Solid paper with some deficiencies
+
+Post Rebuttal/Revision Comments
+-------------------------------
+Thank you for addressing our questions as well as for considering the feedback on the previous version of this paper.
+
+
+
+Review #18D
+===========================================================================
+
+Paper Summary
+-------------
+This paper makes the observation that existing soft-error resilience schemes are centered on out-of-order cores and do not generalize well to in-order cores. This is because (1) in-order cores have small store buffers, which makes checkpointing expensive, and because (2) in-order cores are not able to hide the latency of checkpointing and verification by executing non-dependent instructions. To solve these issues, this paper presents Turnpike, which leverages the compiler to reduce the pressure on the store buffer and to reduce the number of checkpoints. Instructions are also reorder to allow for better scheduling in hardware. Results show that Turnpike incurs a 0-7% run-time overhead while the state-of-the-art incurs a 29-84% performance overhead on in-order cores.
+
+Strengths
+---------
+* Clever hardware-software co-designed solution to remove the overheads of soft error resilience for in-order cores in embedded systems
+
+* Turnpike achieves extremely low performance overhead (0% in many cases) compared to 29-84% overhead for prior art
+
+Weaknesses
+----------
+* Poor sampling methodology for the evaluated workloads
+
+* (minor) SPEC workloads do not represent what runs on in-order cores on embedded systems
+
+Novelty
+-------
+3. New contribution
+
+Evaluation
+----------
+4. The evaluation is excellent and demonstrates the value of the idea
+
+Impact
+------
+3. Likely to impact future research and/or products
+
+Writing Quality
+---------------
+4. Well-written
+
+Reviewer expertise
+------------------
+2. Some familiarity
+
+Questions for Revision/Rebuttal:
+--------------------------------
+1. How does Turnpike do on out-of-order cores? For example, do the checkpoint pruning strategies improve performance compared to Turnstile on out-of-order cores?
+
+2. Does the Loop Induction Variable Merging (LIVM)  increase the instruction count for the program? Similarly, what impact does Store-Aware Register Allocation have on the overall register allocation efficiency?
+
+3. When a fault is detected, how does the recovery overhead of Turnpike and Turnstile compare?
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+2. Revision/Rebuttal would be nice, but not essential (though it would be
+   nice to see my concerns addressed)
+
+Comments to authors
+-------------------
+This was an extremely well-written and well-executed paper. All the compiler transformations to reduce the pressure on the store buffer and to prune checkpoints were clever and nicely explained. 
+
+My initial thought that was that simply increasing the size of store buffer will remove any need for compiler intervention. The revision letter (and Fig 20) acknowledges that this is true to some extent, but it is interesting to see that the two new optimizations (store-aware register allocation and loop induction variable merging) allow Turnpike to still outperform Turnstile with a large store buffer size. That said it would be good to add the discussion in the revision letter around Figure 20 in the main text (Fig. 20 is not currently referred in the paper's text).
+
+I have two suggestions to improve the paper, the 
+
+1. Fast-forwarding a fixed number of instructions is not a good methodology to sample SPEC workloads and is known to lead to unreproducible and inaccurate results. I would recommend using the Simpoint methodology[1]. There are plenty of resources online to help create SPEC simpoints for gem5 (https://github.com/abmerop/gem5-utils/blob/master/spec-fs-simpoint/README).
+
+[1] https://cseweb.ucsd.edu/~calder/simpoint/
+
+2. Both LIVM and Store-Aware Register Allocation are nice solutions to reduce the overhead of checkpointing, but they are not the default choice by compilers because they lead to a higher instruction count. It'd be good to discuss these overheads. In particular, how is it that in some cases, Turnpike achieves a 0% overhead?
+
+
+Very minor point: You might consider changing the name of your solution since both Turnpike and Turnstile sound very similar. I often had to go back and look up which was the baseline and which was your solution.
+
+Overall Merit
+-------------
+4. Good (B) -- Solid paper with some deficiencies
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+4. Good (B) -- Solid paper with some deficiencies
+
+Post Rebuttal/Revision Comments
+-------------------------------
+I've read the rebuttal. While I remain positive about the contributions of your paper, I want to point out that citing prior work is not a good excuse for using bad methodology.
+
+
+
+Review #18E
+===========================================================================
+
+Paper Summary
+-------------
+This paper proposes a scheme called Turnpike for detecting and recovering from soft errors
+in in-order processors. It is an extension of a previously proposed technique (called Turnstile)
+for out-of-order processors. In order to make Turnstile work for in-order cores, the compiler
+performs several optimizations. There is also extra hardware support to identify WAR-free STOREs
+during run-time.
+
+Strengths
+---------
+The proposed scheme for soft error tolerance in in-order processors has low hardware overhead
+as well as low performance overhead.
+
+Weaknesses
+----------
+Turnpike (as well as the previously proposed Turnstile) require significant modifications to
+the ISA, and rely on knowing the size of the Store Buffer. So the binary is fine-tuned to a
+specific microarchitecture.
+
+Novelty
+-------
+2. Incremental improvement
+
+Evaluation
+----------
+3. There are some minor issues with the evaluation, but they can be solved
+
+Impact
+------
+2. Likely to have minor impact
+
+Writing Quality
+---------------
+4. Well-written
+
+Reviewer expertise
+------------------
+3. Knowledgeable
+
+Questions for Revision/Rebuttal:
+--------------------------------
+1. It would be good to see the results with different STORE BUFFER sizes.
+
+2. It would be good to clarify how the compiler generates "recovery regions"
+   when there are control-dependent regions due to conditional branches. Also,
+   provide information on how the compiler conveys region boundaries to the
+   hardware.
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+3. Revision/Rebuttal would be somewhat useful -- I am open to revising my
+   score based on how satisfactorily the concerns are addressed.
+
+Comments to authors
+-------------------
+Major Points:
+-------------
+1. It is not clear how the "recovery regions" are determined by the compiler when there are
+   control dependencies. Do branches always terminate a region? It is also not clear how the
+   region boundaries as well as the checkpoint STOREs are communicated to the hardware by the
+   compiler, and the ISA-level changes required for them.
+
+2. The compiler needs to know quite a bit about the hardware, and so the generated code will
+   be tailor-made for a specific microarchitecture (e.g., the number of STORE BUFFER entries).
+
+3. How are the library code and the OS code made error-resilient? Are they recompiled with the
+   Turnpike compiler?
+
+4. It looks like the main reason Turnstile cannot be directly applied to in-order cores is
+   the small size of the STORE BUFFER (assumed to be 4 in this paper, based on the ARM CORTEX).
+   The paper does argue why adding more entries would increase its access time; however, in-order
+   processors from Intel have had more entries in the STORE BUFFER.
+
+5. In a multi-core processor, will the acoustic sensors be able to pinpoint which core needs
+   to rollback? Or, would all cores rollback at the same time whenever a sensor detects an
+   alpha/neutron hit?
+
+6. Releasing the WAR-free STOREs earlier is good. What is the memory consistency model assumed?
+   If rollback is limited to a single core, will the rollback affect the memory consistency
+   model? For instance, how does rollback in one core affect a data-dependent thread in another
+   core (especially if a WAR-free STORE ended up storing a wrong value and another thread already
+   read that wrong value, but did not rollback?
+
+7. Some of the compiler optimizations discussed in this paper are very basic, for instance,
+   spreading out data-dependent instructions.
+
+8. The analysis part is quite thorough and detailed, and gives significant insight. There is no
+   information on code size increase, however. Providing this information would be helpful. Also,
+   it would be good to see how the results would be if the number of store entries is increased.
+
+9. in Fig. 14, the Execution Time with compact CLQ is better than that with ideal CLQ for programs
+   astar, mcf, and ocean-ng. Why does this happen, despite the compact CLQ detecting fewer WAR-free
+   STOREs for astar and ocean-ng (in Fig. 15)?
+
+Minor Points:
+-------------
+1. Turnstile is described in multiple places as the "state-of-the-art" when there have been other
+   papers published afterwords.
+
+2. A significant part of the paper is used to discuss Turnstile!
+
+Overall Merit
+-------------
+4. Good (B) -- Solid paper with some deficiencies
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+4. Good (B) -- Solid paper with some deficiencies
+
+
+
+Review #18F
+===========================================================================
+
+Paper Summary
+-------------
+This paper presents Turnpike, a soft error resilience technique for in-order cores. Turnpike relies on acoustic sensors to detect soft errors and builds on prior work to provide low-cost resilience. To this end, Turnpike removes unnecessary checkpoints and performs checkpoint aware scheduling.
+
+Strengths
+---------
++ A well motivated problem.
+
++ The evaluation is thorough.
+
+Weaknesses
+----------
+- The compiler is heavily involved for some optimizations. This could have some severe performance issues in some applications.
+
+Novelty
+-------
+2. Incremental improvement
+
+Evaluation
+----------
+3. There are some minor issues with the evaluation, but they can be solved
+
+Impact
+------
+2. Likely to have minor impact
+
+Writing Quality
+---------------
+4. Well-written
+
+Reviewer expertise
+------------------
+2. Some familiarity
+
+Questions for Revision/Rebuttal:
+--------------------------------
+1. In Section 4.3 could the next region modify some dependent unverified data? It would be good to explain this section with a good example that covers several cases.
+
+2. Please present the hardware analysis on why the store buffer size was chosen to be 4. It is useful to include this in the main body of the paper.
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+2. Revision/Rebuttal would be nice, but not essential (though it would be
+   nice to see my concerns addressed)
+
+Comments to authors
+-------------------
+Please refer to my questions.
+
+Overall Merit
+-------------
+4. Good (B) -- Solid paper with some deficiencies
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+4. Good (B) -- Solid paper with some deficiencies
+
+
+
+Response by Author [Jianping Zeng <zeng207@purdue.edu>] (1136 words)
+---------------------------------------------------------------------------
+We appreciate the reviewers' thoroughness; we are gratified to see general
+agreement on the value of Turnpike. Please also see our revision in blue text.
+
+### Q1--Reviewer-B: Low technical contributions?
+As reviewer A and C appreciate our technical contributions, we believe the
+beauty of Turnpike is that its 7 optimizations (four of them are new) are
+simple yet effective, and they are combined in a synergistic way to efficiently
+solve the research problem.
+
+We also believe our optimizations can be used for other store-critical
+architecture---such as energy-harvesting systems (e.g., NVP[HPCA'15],CoSpec[MICRO'19],Clank[ISCA'17]), GPUs, and
+NVM-enabled crash-consistent servers where stores are followed by flush and
+fence---to lower the impact/overhead of the performance-critical stores. 
+
+### Q2--Reviewer-B,C: Area/energy cost and feasibility of acoustic sensors
+10% area/energy cost is not true; Table 1 shows the percentage compared to
+4-entry store buffer. In fact, Turnpike only incurs 0.067% area overhead in
+total for an ARM Cortex-A53 core whose die size is 2.5$mm^2$.
+
+According to Upasani's [64-69], an acoustic sensor occupies the area of a typical
+6T SRAM cell, and the interconnection of the sensors does not require an
+additional metal layer during the manufacturing process until the number of the
+sensor is over 2800. In fact, 300 sensors only requires 0.065% of total chip
+area (2.5$mm^2$) in 22nm technology despite their interconnects, making it
+possible to be deployed on the area-efficient in-order core without increasing
+the number of metal layers.
+
+### Q3--Reviewer-C: Unconvinced due to not much follow-up work on sensors
+We believe our community should foster forward-looking technology
+and encourage people to explore it aggressively so that it can
+be commercialized in the near future. 
+
+For example, hardware transactional memory (HTM) was revisited and
+revamped---mostly by Rajwar and Goodman [ASPLOS'02] and Hammond et el
+[ISCA'04]---early 2000s onwards, though the original idea of architectural
+support for HTM was introduced by Herlihy and Moss [ISCA'93]. Since then, it
+took Intel 20 years to integrate HTM into the Haswell microarchitecture
+(released in 2013). If our community had rejected the ASPLOS'02 and ISCA'04
+papers, we might have needed to wait for another decade to use HTM in commodity
+processors. 
+
+### Q4--Reviewer-B: Write cost in register allocation and how to maintain the quality? 
+To reflect the effect of a store being quarantined in SB, we set the write cost
+to be the same as WCDL. In addition to our effort to match the same number of
+spills, we consider the depth of use chain of a register use so that those live
+intervals (variables), whose use chain is deeper than the write cost, could be
+allocated to a physical register. That is, by keeping the same amount of spills
+and their cost in a best-effort manner, Turnpike could maintain the original
+register allocation quality.  This is supported by the negligible instruction
+count increase due to our store-aware register allocation (RA-Trick); see Q5.
+
+
+### Q5--Reviewer-D: Instruction increase of LIVM/RA-Trick; zero overhead?
+Overall, the dynamic instruction count overheads of the LIVM and RA-Trick
+optimizations are 0.01% and 0.02% on average. Thus, Turnpike can achieve
+near-zero performance overhead. Also, we believe that Turnpike's store
+quarantine leads to more store-to-load forwarding, which can amortize Turnpike's
+instruction overhead. We will provide more details in the final copy.
+
+### Q6--Reviewer-E: multi-cores; rollback an alpha/neutron hit; memory consistency
+Only the processor core detecting a soft error needs to rollback, which works
+for any memory consistency model. As with Turnstile, Turnpike doesn't affect
+the memory consistency model. The reason is two fold: (1) Fences and atomic
+operations are both treated as region boundaries. That is, for barrier/lock
+primitives, Turnpike releases the SB entries only after WCDL cycles elapse,
+e.g., a consumer thread never moves forward before a producer thread releases
+the lock verified to be error-free. (2) Although Turnpike fast-releases some
+stores of multithreaded program, the stores are still sequentially released
+from SB to cache without violating the underlying memory consistency model. 
+
+### Q7--Reviewer-B: Extra recovery cost due to the compiler optimizations?
+Only pruning adds extra cost for recovery process because of recovery slice.
+On average, only 28% of the original region execution time is added to the
+recovery, which is affordable given that soft errors rarely occur (e.g., 1 per
+day in 16nm).
+
+### Q8--Reviewer-E: Do branches always terminate a region?
+No. The number of stores is the only constraint for Turnpike's region formation.
+
+### Q9--Reviewer-E: How to convey region boundaries and checkpoint stores to HW?
+As with Turnstile, Turnpike also assumes ISA extension for the two instructions.
+
+### Q10--Reviewer-F: Could the next region modify some dependent unverified data?
+No. We suspect that the reviewer asks if WAW-dependent store could modify
+unverified data of prior regions. In this case, although the later store is
+fast-released, it is still committed after the prior store due to the in-order pipeline. 
+
+### Q11--Reviewer-B: Transient faults by power fluctuations or vulnerable transistors?
+Acoustic sensors detect all soft errors caused by energetic particle strikes
+including alpha particle from packaging materials and high-energy neutrons from
+cosmic rays.  Thus, the sensors work for vulnerable transistors but not for
+power fluctuation; that said, it is not the major source of soft errors unlike
+particle strikes.
+
+### Q12--Reviewer-B,E: Number of instructions per region and code size increase?
+On average, there are 11.2 instructions per region, and code size
+increases by 0.4%; please refer to new Figure 26 in the revision for details.
+
+### Q13--Reviewer-B: Side effect on LICM and instruction scheduling? 
+Those optimizations are safe and never corrupt the recovery process because we
+schedule stores within same region.  We believe inter-region analyses could
+improve the performance and leave them as future work.
+
+### Q14--Reviewer-E: Performance of Turnpike with larger SB sizes.
+The average overhead of Turnpike is still 0% though the SB size is extended to
+8 and 10 entries; see the new Figure 22 of the revision for details.
+
+### Q15--Reviewer-B: DL50 sometimes leads to lower overhead than DL40
+Our apologies for mis-presenting numbers; the new Figure 19 has the wrong data fixed.
+
+### Q16--Reviewer-D: Turnpike for out-of-order cores?
+Technically, Turnpike works for out-of-order cores as is. We believe Turnpike
+can outperform Turnstile even on out-of-order cores because our optimizations
+can reduce stores and pressure to SB significantly.
+
+### Q17--Reviewer-D: Why not use Simpoint?
+For fair comparison, we followed the same approach used by the prior work Turnstile.
+
+### Q18--Reviewer-E: Binary is tailored for a specific microarchitecture.
+Many existing compiler optimizations, e.g., instruction scheduling, already
+need to know detailed micro-architectural information. Turnpike compiler only
+needs to know the SB size.
+
+### Q19--Reviewer-E: Are the library and OS code made error-resilient?
+They should be recompiled to be resilient as with prior works.
+
+### Q20--Reviewer-E: Why compact CLQ is better than ideal CLQ for some applications?
+We simulated the access latency of the CLQs. The long
+access latency of the ideal CLQ could offset the benefit of its accurate WAR-free store detection.
+
+### Q21--Reviewer-F: Why store buffer size is chosen to be 4?
+We follow the SB design of ARM Cortex-A53 and a recent paper[27].
+
+
+
+Comment @A1 by Reviewer D
+---------------------------------------------------------------------------
+Discussion Summary: The reviewers were unanimously positive about the paper. There were some minor concerns about the depth of technical contributions and the sampling methodology, but the reviewers unanimously agreed that the paper should be accepted to MICRO.
+
+Key points in the paper:
+* Compiler-architecture co-design to support acoustic-sensor-based soft error resilience in in-order cores
+* Main idea is to reduce the number of checkpoints using compiler optimizations and to perform checkpoint aware scheduling.
+
+Strengths:
+* Important problem with an interesting hardware-software co-designed solution
+* Low performance overhead and low hardware cost
+* Thorough evaluation with a broad range of benchmarks and very clearly written-paper
+
+Weaknesses:
+* Paper uses known compiler techniques
+* Poor sampling methodology
+* Non-trivial area and energy for low-cost in-order processors.

@@ -1,0 +1,640 @@
+MICRO-56 Paper #414 Reviews and Comments
+===========================================================================
+Paper #414 SweepCache: Intermittence-Aware Cache on the Cheap
+
+
+Review #414A
+===========================================================================
+* Updated: Jul 12, 2023, 8:53:09 AM UTC
+
+Paper summary
+-------------
+The paper presents SweepCache, a compiler-assisted technique for enabling consistent execution of energy-harvesting systems based on a non-volatile main memory when adding a data cache.
+
+Main Strengths
+--------------
+* The paper proposes a reasonable solution to a clear, relevant problem
+* The paper is well-written and accessible and provides a good overview of (and comparison with) related work
+
+Main Weaknesses
+---------------
+* I feel like some details (in particular, the empty-bit trick, which only provides very marginal benefit) are overly stressed and could be removed to make space for more relevant discussion (see comments below)
+* One aspect that could be better evaluated is impact on durability, due to SweepCache's write amplification
+
+How easy it is to read and understand the paper?
+------------------------------------------------
+1. Very clear: I had no trouble understanding the work.
+
+Comments for authors
+--------------------
+The paper is well written and organized and easy to follow, there are just a couple typos / unclear phrasings.
+
+Abstract: "with getting the regions their own persist buffer" --> unclear, I guess it refers to the "dual-buffering" done with the persistent buffers.
+
+Introduction: "and just to name a few" --> remove "and"
+
+Sec. 2.2: "such an memory" -> such a memory
+
+Sec. 2.2: [all prior schemes] "rely on JIT checkpointing --> is that correct? As far as I could understand, ReplayCache does not rely on JIT checkpointing, but rather explicitly writes back dirty cache lines with clwb instructions.
+
+Sec. 3.2: I'm not sure whether the discussion about the s-phases and t-phases really helps understanding.. I'd suggest simply describing the three-phase mechanism.
+
+It looks like the bar for SweepCache (should be 10.21%) is missing from Figure 11.
+
+The various bar chart figures are very tiny, perhaps it would be worth showing fewer, aggregated results (e.g., somehow clustering the benchmarks) in more readable figures and leaving the full results for larger figures in an appendix or ArXiV version of the paper without space limitations. 
+
+
+I felt like the two-pass region formation compiler pass, although adequately illustrated, lacks strong motivation and is based on some design choices that might lead to sub-optimality.
+Here are some related questions that I would have liked to see discussed:
+* How would different region-formation strategies affect energy efficiency and performance?
+* Is there a tradeoff between compilation effort (algorithm complexity) and quality of the resulting regions?
+* Could an optimal region-formation strategy be evaluated? How much would it affect performance / energy?
+
+
+A related aspect I would have liked to see more detail on is characterization of the region. The end of Sec. 6.4 provides average number of stores and region size; could you add more information (at least a histogram or CDF or number of stores and region size across different benchmarks)?
+
+
+Sec. 4.4 (and also later sections) mention that the cache miss rate for the evaluated benchmarks is very low. In what configuration is that evaluated? With or without power failures? How do power failures affect cache misses?
+Also related: considering your introduction and motivation, I would have expected power traces for different domains, such as wearable or automotive, although I am not sure how accessible such traces are for research.
+
+
+Sec. 6.7 mentions that SweepCache suffers from 4.62X write amplification compared to NVSRAM and dismisses the problem with low energy cost of writes.
+However, extra writes are costly on non-volatile memory (usually, flash) due to its reduced endurance to writes.
+The evaluation would be much stronger if the impact on lifetime of typical NVM employed in energy-harvesting systems would be evaluated. For example, would the system need a larger NVM (to be used for wear leveling) in order to achieve the same durability as in the baseline, when adding SweepCache? How much larger?
+Also related: does SweepCache introduce any additional random writes that also impact NVM durability (since blocks can only be written sequentially)?
+Perhaps there isn't much space for an extended discussion and evaluation, but the problem should at least be mentioned and briefly discussed.
+
+Questions/Issues for the authors to address in the rebuttal/revision
+--------------------------------------------------------------------
+See comments above. The most relevant points are regarding the compiler pass and NVM durability considerations.
+
+Pre-rebuttal overall merit
+--------------------------
+2. Accept -- high quality paper with minor issues that can be easily
+   overlooked. Should have in the program.
+
+Post-rebuttal overall merit
+---------------------------
+2. Accept -- high quality paper with minor issues that can be easily
+   overlooked. Should have in the program.
+
+Would you like to champion this paper?
+--------------------------------------
+2. No
+
+Reviewer expertise
+------------------
+3. Some familiarity: I have a passing knowledge of this topic but do not
+   follow the relevant literature.
+
+Reviewer confidence
+-------------------
+1. High confidence: I understand the key aspects of the paper to a great
+   extent.
+
+
+
+Review #414B
+===========================================================================
+* Updated: Jul 14, 2023, 5:48:34 PM UTC
+
+Paper summary
+-------------
+- The authors design a scheme to support a volatile cache in a non-volatilve processor (NVP) using a redo buffer paired with compiler annotations when writing to non-volatile memory, achieving region persistency without just-in-time (JIT) checkpointing of volatile state.
+- This work improves on systems like ReplayCache by allowing a new region to begin before all of the stores from the previous region have committed, improving throughput.
+- The paper includes an interesting analysis of when their system is most useful by testing multiple energy harvesting traces and benchmarks as well as teasing out the exact benefit of removing the extra hardware needed for JIT checkpointing.
+
+Main Strengths
+--------------
+- The sensitivity studies included in this work are thorough and shows the impact of a number of different system characteristics. The sweep across capacitor sizes is revealing, and the graphs digging into the propagation delay would be useful to others in this field.
+
+Main Weaknesses
+---------------
+- The treatment of I/O is cursory. The authors claim that I/O operations can simply be contained inside a new region, but it's not entirely clear what kind of modifications to the compiler would be required to do that. Particularly given that I/O freshness and consistency [Surbatovich, 2021] need to be taken into account in intermittent systems.
+- The SweepCache optimization is most useful in extremely tiny systems. It's not clear from the paper whether there are peripherals (e.g. a wireless radio and sensor of some kind) that can run within the same energy and power budget that SweepCache optimizes.
+- The paper shows an improvement over ReplayCache, but the benefit compared to NVSRAM is less obvious.
+
+How easy it is to read and understand the paper?
+------------------------------------------------
+1. Very clear: I had no trouble understanding the work.
+
+Comments for authors
+--------------------
+## Questions
+- How did you pick the benchmarks for the evaluation? Is it reasonable to expect that most apps running on an NVP will have similarly low cache miss rates using a 4KB cache?
+- Do you see the increase in writes to NVM as a problem for SweepCache? Given the characteristics of Re-RAM, what does SweepCache do to the lifetime of NVM compared to the original NVP, ReplayCache, etc?
+- What was the capacitor size used for Figure 13?
+
+## Small issues/typos
+- Hibernus[3] and QuickRecall[26] work on volatile processors with byte addressable non-volatile memory, it's worth distinguishing the off-the-shelf approach from NVPs.
+- page 9, portion-->proportion
+- page 11, QucikRecall-->QuickRecall
+
+Questions/Issues for the authors to address in the rebuttal/revision
+--------------------------------------------------------------------
+- More information on which peripherals a SweepCache system can support would go a long way to putting this paper's contributions in perspective. For instance, could you give a few examples of peripherals that can run successfully on devices with less than 1µF total capacitance on the RFHome or RFOffice trace? Given the peripherals that are likely to be used, does the smaller capacitor save any area?
+
+Pre-rebuttal overall merit
+--------------------------
+4. Weak reject -- fair work with some flaws that are difficult to overlook.
+   Would prefer it doesn't appear in the program, but will not fight
+   strongly.
+
+Post-rebuttal overall merit
+---------------------------
+3. Weak accept -- solid paper with some deficiencies. May consider
+   including in the program.
+
+Would you like to champion this paper?
+--------------------------------------
+2. No
+
+Reviewer expertise
+------------------
+1. Expert: I have written one or more papers on this topic and/or I
+   currently work in this area.
+
+Reviewer confidence
+-------------------
+1. High confidence: I understand the key aspects of the paper to a great
+   extent.
+
+
+
+Review #414C
+===========================================================================
+* Updated: Jul 13, 2023, 5:46:19 AM UTC
+
+Paper summary
+-------------
+This paper introduces SweepCache, a volatile data cache architecture for energy harvesting systems. Because flushing the volatile cache on the event of power failure would require dedicating harvested energy to perform the flushing, SweepCache, instead, incrementally persists cache contents to non-volatile memory (NVM) through a combination of compiler and hardware architecture support. The compiler partitions a program into a series of recoverable regions. The hardware persists all stores of a region through a persist buffer that includes all dirty cachelines that need to be written back to NVM atomically at the end of a region for failure recovery. The evaluation shows that the proposal outperforms ReplayCache, another state-of-the-art energy harversting system also equipped with a volatile cache.
+
+Main Strengths
+--------------
+- Proposal removes the need for securing enough energy to flush the volatile cache on the event of a power failure.
+- Proposal appears to provide better energy-efficiency compared to other state-of-the-art volatile cache designs.
+
+Main Weaknesses
+---------------
+- Proposal is incremental over previous work on region-level persistence.
+- Forward progress guarantees rely on reliable worst-case energy estimations.
+- The argument about relying on a simpler voltage monitor is a bit weak.
+
+How easy it is to read and understand the paper?
+------------------------------------------------
+1. Very clear: I had no trouble understanding the work.
+
+Comments for authors
+--------------------
+SweepCache presents an interesting and effective hardware/software co-design for supporting a volatile cache in energy harvesting systems. Evaluation results corroborate previous work that volatile caches can provide significant performance improvement over an energy harvesting system without a cache. Evaluation also shows that the proposal can be more energy efficient compared to previous cache proposals as it removes the need for securing enough energy to checkpoint the volatile cache on the event of a power failure.
+
+Main concerns include the following.
+
+The concept of region-level persistence is not new in the context of energy harvesting systems. The paper should clarify its contributions over prior work on region-level persistence [1]. 
+
+The argument about relying on a simpler voltage monitor is a bit weak. Any energy harvested system would likely rely on a hardware circuit to monitor voltage to indicate when it is safe to resume anyways. The argument about the additional complexity of a dual-threshold voltage monitor needs to be further elaborated. Is the concern about the area, current supply, or delay propagation?
+
+SweepCache relies on a model to estimate the worst-case energy of a region execution and its recovery to guarantee forward progress. That said, it seems that if the estimation is wrong, then SweepCache might not be able to guarantee progress. For example, an aging ReRAM device may require longer programming time, which could make runtime execution and recovery longer than the estimation. It is not clear whether SweepCache has a safety alternative for the case when estimation goes wrong. 
+
+The cache design space for energy harvesting systems seem to revolve around an energy design trade-off that would be useful to understand in more depth. On the one hand, the proposal avoids the need to secure harvested energy for flushing the cache on the event of a power failure, thus providing more energy during runtime. On the other hand, the proposal requires to do more work during runtime to persist registers and write back dirty cache lines during. Frequent writebacks to NVM may consume higher energy than checkpointing volatile state to NVM on the event of a power failure. 
+
+It would be useful to extend the discussion on store-threshold sensitivity in section 6.4 to understand the impact of region size on energy efficiency.
+
+For the ReRAM technology used in the evaluation, the paper should report the read and write latency. Since the ReRAM sits on the persist path, its write latency may impact the energy used during runtime to checkpoint and persist state.
+
+PRESENTATION
+
+Figures 4-6 are illegible. The bars and fontsize are too small even when zooming out on a PDF reader.
+
+REFERENCES
+
+[1] Zeng et al. ReplayCache: Enabling Volatile Cachesfor Energy Harvesting Systems. MICRO 2021.
+
+Pre-rebuttal overall merit
+--------------------------
+3. Weak accept -- solid paper with some deficiencies. May consider
+   including in the program.
+
+Post-rebuttal overall merit
+---------------------------
+3. Weak accept -- solid paper with some deficiencies. May consider
+   including in the program.
+
+Would you like to champion this paper?
+--------------------------------------
+2. No
+
+Reviewer expertise
+------------------
+3. Some familiarity: I have a passing knowledge of this topic but do not
+   follow the relevant literature.
+
+Reviewer confidence
+-------------------
+1. High confidence: I understand the key aspects of the paper to a great
+   extent.
+
+
+
+Review #414D
+===========================================================================
+* Updated: Jul 12, 2023, 12:33:54 AM UTC
+
+Paper summary
+-------------
+This paper proposes a novel intermittent computing framework called SweepCache, that attempts to partition the program into a series of recoverable regions and persists stores at region granularity. Since it does not require JIT checkpointing, SweepCache can effectively exploit the harvested energy source. To compensate for the persistence latency, the authors also introduce region-level parallelism. The evaluation results demonstrate well the efficiency of the proposed scheme.
+
+Main Strengths
+--------------
++ JIT checkpoint-free approach is a promising direction to fully exploit the harvested energy source.
++ The proposed compiler-architecture co-design is interesting.
++ The evaluation results demonstrate that the proposed SweepCache can outperform state-of-the-art architectures.
+
+Main Weaknesses
+---------------
+- There are some unclear points (see my comments)
+
+How easy it is to read and understand the paper?
+------------------------------------------------
+1. Very clear: I had no trouble understanding the work.
+
+Comments for authors
+--------------------
+The proposed JIT checkpoint-free approach is an exciting implementation, and the compiler-architecture co-optimization is effective. So, I enjoyed reading this paper.
+
+Supporting the region-level persistence and failure recovery is an excellent strategy, and the mechanism explained in this paper is clear. However, what are the limitations of this scheme? For instance, we should assume no power failure takes place:
+ - when we update the phase1Complete and phase2Complete bits.
+ - during DMA operations, move the data from a Persist Buffer to the NVM space.
+ - cache flush executed at the end of each region, etc.
+
+If my understanding is correct, I recommend the authors clarify these points. That helps readers understand the applicability of SweepCache.
+
+Managing the status bits of phase1Complete and phase2Complete is critical for SeepCache. How do you implement and handle these two bits? It would be stored in VMFFs. Is it right? Also, do you support special hardware (or software control) to set/reset these bits by monitoring the completion of associated operations? Please clarify these points.
+
+In Section 4.1, the authors discuss that "among the regions, the compiler checks if some are too long to be executed with the underlying capacitor energy and splits such a long region so that it can be finished across power failure." This means that the compiler must know the capacitor's capability to perform appropriate region partitioning. On the other hand, as discussed in Section 2.2, the capacitor degradation phenomenon occurs, which is a vulnerable point for JIT checkpointing. In the compile time for SeepCache, do you need to consider the capacitor degradation? If so, how do you handle it? It sounds like a common issue for JIT checkpointing and SweepCache.
+
+Questions/Issues for the authors to address in the rebuttal/revision
+--------------------------------------------------------------------
+- Is there any limitation (or constraints) regarding power failure? (see my comments)
+- How do you handle the phase1Complete and phase2Complete bits?
+
+Pre-rebuttal overall merit
+--------------------------
+3. Weak accept -- solid paper with some deficiencies. May consider
+   including in the program.
+
+Post-rebuttal overall merit
+---------------------------
+3. Weak accept -- solid paper with some deficiencies. May consider
+   including in the program.
+
+Would you like to champion this paper?
+--------------------------------------
+2. No
+
+Reviewer expertise
+------------------
+2. Knowledgeable: I used to work in this area and/or I try to keep up with
+   the literature but might not know the latest developments
+
+Reviewer confidence
+-------------------
+2. Medium confidence: I understand much of the paper but not all of it.
+
+
+
+Review #414E
+===========================================================================
+* Updated: Jul 12, 2023, 3:04:23 AM UTC
+
+Paper summary
+-------------
+The authors propose SweepCache, a caching architecture that leverages a persist redo buffer and compiler-directed regions to ensure safe checkpointing on energy-harvesting systems.
+
+Main Strengths
+--------------
+The paper takes a compiler-architecture co-designed approach, which is uncommon yet generally more effective.
+
+Main Weaknesses
+---------------
+The proposed SweepCache solution is limited in novelty and is mostly built off of existing redo logging principles.
+
+Missing details on how compiler regions are generated.
+
+How easy it is to read and understand the paper?
+------------------------------------------------
+1. Very clear: I had no trouble understanding the work.
+
+Comments for authors
+--------------------
+* I enjoyed reading the paper. I think it is well written and proposes a simple concept. However, the proposed SweepCache solution feels too low in novelty compared to the many prior works in this space. The concept of redo logging proposed here has been well studied, and the idea of dividing the program into designated regions is functionally equivalent to prior task-based intermittent computing approaches. Many of the design challenges presented in this paper have been well-studied, such as the need for double buffering the persist buffer and the use of compiler-assisted checkpointing.
+
+* Why does SweepCache's persist buffer need to be resident in NVM? Why can't it reside in a cheaper volatile memory, as is commonly done in redo-logging-based approaches (e.g., Clank's write-back buffer [23])? In general, the paper needs to provide more motivation and discussion of its design choices, and contrast how the proposed choices differ from prior works.
+
+* How does SweepCache compare against recent work on NVM renaming from ISCA'22? Such work seems to target similar challenges and should be cited and evaluated against.
+
+* How are long-running loops handled by the compiler region partitioning? This is a non-trivial challenge given that the region partitioning is performed on the code statically. More elaboration is needed.
+
+Questions/Issues for the authors to address in the rebuttal/revision
+--------------------------------------------------------------------
+* Why does SweepCache's persist buffer need to be resident in NVM? Why can't it reside in a cheaper volatile memory, as is commonly done in redo-logging-based approaches (e.g., Clank's write-back buffer [23])?
+
+* How are long-running loops handled by the compiler region partitioning?
+
+Pre-rebuttal overall merit
+--------------------------
+4. Weak reject -- fair work with some flaws that are difficult to overlook.
+   Would prefer it doesn't appear in the program, but will not fight
+   strongly.
+
+Post-rebuttal overall merit
+---------------------------
+3. Weak accept -- solid paper with some deficiencies. May consider
+   including in the program.
+
+Would you like to champion this paper?
+--------------------------------------
+2. No
+
+Reviewer expertise
+------------------
+1. Expert: I have written one or more papers on this topic and/or I
+   currently work in this area.
+
+Reviewer confidence
+-------------------
+1. High confidence: I understand the key aspects of the paper to a great
+   extent.
+
+
+
+Rebuttal Response by Author [Yuchen Zhou <zhou1166@purdue.edu>] (1721 words)
+---------------------------------------------------------------------------
+We appreciate the reviewers' thoroughness. Please see our revision in red text.
+
+### Q1-Rev-B: 1uF-capacitor and peripherals 
+1uF-capacitor has been used in energy harvesting systems developed for wireless sensor nodes [a]. Even, a fabricated NVP system backed with 470nF capacitor can support 3 different peripherals [48], i.e., LCD—that can be powered by even a 100nF capacitor [e], 
+UV sensor, and NFC transceiver.
+
+That said, SweepCache is not limited to <=1uF capacitor settings. As long as power failure occurs for a given capacitor, e.g., 100nF~10uF in Table-2, SweepCache consistently outperforms JIT-checkpoint designs as shown in Figure-8; while SweepCache is on par with NVSRAM for 100uF/1mF capacitor settings (without peripherals), that’s because no power failure occurs in the settings, i.e, NVSRAM doesn’t perform its expensive JIT-checkpointing/restoration at all.
+
+Note that even peripherals-equipped energy-harvesting systems (despite their large capacitor) suffer frequent power failure in which case SweepCache would outperform NVSRAM and others thanks to its high energy efficiency and low hardware complexity. For example, an energy-harvesting system equipped with a 20uF-capacitor and multiple peripherals still encounters frequent power failure [b][c] because of peripheral energy consumption. 
+
+Consequently, we believe peripherals are not a fundamental concern for SweepCache.
+
+### Q2-Rev-B: Given the peripherals that are likely to be used, does the smaller capacitor save any area?
+It depends on the peripheral's size, but there're many commodity energy harvesting systems where the capacitor size definitely matters, e.g., L’Oréal's UV Sense and UV Patch.
+
+### Q3-Rev-B: Benefit compared to NVSRAM is less obvious. 
+As described in ReplayCache paper [83], NVSRAM actually serves as the upper bound for performance comparison due to its forward-looking technology used. That said, SweepCache outperforms it for most configurations (see Q1).
+
+### Q4-Rev-B: I/O is cursory.
+SweepCache can leverage prior work [14] to guarantee that I/O operations always start with a fully charged capacitor. Then, the I/O operations can successfully complete without power interruption, which solves both freshness and consistency issues.
+
+### Q5-Rev-A, B: Durability  
+First of all, 4x write amplification doesn’t mean 4x faster wear-out since the writes are spread out to different cells.  Moreover, there is a lot of research on ReRAM’s endurance enhancement, e.g., a recent wear-leveling technique improves ReRAM’s endurance by over 50x [d]. On the other hand, ReRAM’s area cost is very small due to its high density, and therefore—as reviewer A said—enlarging the ReRAM size with endurance in mind could be a viable option if durability is really an issue.
+
+### Q6-Rev-B: Lifetime of NVM compared to the original NVP, ReplayCache, etc
+SweepCache has better durability than the original NVP and ReplayCache. As shown in Figure 14 of our revision, SweepCache has fewer NVM writes than ReplayCache, while the original NVP has 1.26x more NVM writes than SweepCache; see also Q5.
+
+### Q7-Rev-E: Long loops
+As discussed in Section 4.1, our compiler inserts a region boundary at each loop header to guarantee that the store count per region never exceeds the threshold. 
+
+### Q8-Rev-E: Why NVM-resident persist buffer (PB)? Can it be volatile as in Clank? 
+Clank relies on a non-volatile scratchpad to guarantee crash consistency. In a sense, SweepCache’s PB plays a similar role as Clank’s non-volatile scratchpad to failure-atomically persist the stores of each region, which protects NVM against partial updates of any power-interrupted region.
+
+### Q9-Rev-A: Region formation.
+In general, longer regions are preferred as long as forward progress is guaranteed (i.e., abstract of stagnation). The reason is threefold: (1) They tend to have more non-store instructions therein improving region-level parallelism. (2) Longer regions lead to fewer region boundaries thus reducing the frequency of region-level persistence. (3) Similarly, the number of live-out registers (i.e., inputs to following regions) also reduced due to the reduction of the total number of regions. Note that for the last 2 reasons, SweepCache can lower the NVM write traffic with longer regions. 
+
+That said, compared to shorter regions, longer ones are more vulnerable to power failure; especially when the failure frequency is high, they could limit forward progress due to their significant waste—proportional to the region size—during the rollback recovery.
+
+Although SweepCache pursues longer regions, we found out that it can benefit from RockClimb [14] to eliminate the rollback recovery; RockClimb provides static/dynamic techniques that can maximize the size of stagnation-free regions and run them in a rollback-free manner. We leave the RockClimb integration as our future work.
+
+###  Q10-Rev-C: Extend the discussion on store-threshold sensitivity. 
+We plan to use the techniques described in Section 5 to enlarge our regions to conduct more explorations and leave it as our future work; see Q9. 
+
+### Q11-Rev-D: Any limitation/assumption regarding power failure?
+No. SweepCache assumes power failure can happen at any time. As shown in Section-4.2 (revision), SweepCache’s recovery protocol always ensures crash consistency no matter when power failure occurs.
+
+### Q12-Rev-A: Is there a trade-off between the compilation effort and the quality of regions? 
+No.
+
+### Q13-Rev-D: phaseComplete bits?
+Thanks for asking. It is now explained in Section 4.2 (revision).
+These bits should be non-volatile since SweepCache needs to read their status across power failure to govern the necessary recovery actions. SweepCache maintains the bits using a single persistent register—that exists in a memory controller and gets read/written by a similar controller logic to that of prior work [85]. 
+
+### Q14-Rev-B: Benchmarks evaluated and their misses for 4kB-cache
+They’re used in prior works (ReplayCache/NVSRAM) so we pick them for a fair comparison. Yes, most of them show low miss rates for 4kB-cache. That said, we believe SweepCache would maintain its high performance even for those with many cache misses. That’s because, during s-phase 1 (Figure 3), those writebacks of the cacheline being evicted by the misses can be hidden by SweepCache’s high region-level parallelism (91%).
+
+### Q15-Rev-C: Cache design trade-off between the JIT-checkpointing on power failure and flushing cost across SweepCache’s regions. 
+We appreciate the reviewer’s insight.  There're 2-factors affecting the trade-off: (1) SweepCache has higher write amplification than NVSRAM, but this problem can be dismissed as discussed in  Section 6.7; the resulting energy consumption of the NVM writes only takes a small portion of total energy consumption. (2) Power failure frequency largely impacts the energy consumption of JIT-checkpointing schemes, i.e., the higher the frequency is, the more energy consumption JIT-checkpoint schemes cause. Nevertheless, SweepCache still outperforms JIT-checkpointing schemes even though only a few outages happen for large capacitors; see Figure 8. 
+
+### Q16-Rev-E: Compares against NvMR (ISCA’22)? 
+While the NvMR’s memory renaming technique (now cited in the revision) is a promising technique for eliminating idempotency violations, it requires JIT-checkpointing and thus fits more for stable power sources as it exploits a 100mF supercapacitor. In contrast, SweepCache works for a much smaller capacitor (Figure-8).  We’re currently implementing NvMR in our simulator, and the final copy will deliver the comparison results.
+
+### Q17-Rev-E: Novelty 
+As we discussed in Section 7, our novelty is not found in the mere use of redo
+logging but in how we architect the hardware to enable an energy-efficient volatile cache without compromising the crash consistency guarantee. To the best of our knowledge, SweepCache is the first of its kind for intermittent computing.
+
+### Q18-Rev-B: Capacitor size for Figure 13.
+470nF.
+
+### Q19-Rev-A: CDF about the region. 
+See Figure 11 in the revision.
+
+### Q20-Rev-C: Is the concern about the area, current supply, or delay propagation?
+Yes. A dual-threshold voltage monitor requires more area cost, higher current supply, and longer propagation delay. A typical dual-threshold voltage monitor usually needs to integrate two independent voltage monitors [f] thus it has a more complicated circuit than that of a single-threshold voltage monitor.
+
+### Q21-Rev-C, D: Safety alternative for the wrong estimation/do you need to consider the capacitor degradation?
+That is not a big deal for capacitor degradation or ReRAM aging problems. Because there is actually a huge gap between our worst-case analysis and realistic energy consumption. That is to say, even if encountering the capacitor degradation and aging problem, the energy consumption is still lower than our worst-case analysis.
+
+That said, it’s also easy to make our model resilient to the above issues: (1) We can still consider these two issues in our energy estimation model. (2) We can leverage the PFI (power failure immunity) proposed by prior work [14] to guarantee no region fails more than once. 
+
+Moreover, it is also cheaper for SweepCache to deal with these problems than JIT-checkpointing schemes. SweepCache can easily solve the problems by recompiling the program while the JIT-checkpointing designs have to re-architect their hardware designs.
+
+### Q22-Rev-A: Configuration/how do power failures affect cache misses? 
+The cache miss rate in section 4.3 is evaluated with power failure and default setting. Generally, experiencing power failure will increase the cache misses. The more power failure happens, the higher the cache miss rate it has. As shown in Figure 13, RF traces have more power failure and thus have a higher cache miss rate.
+
+### Q23-Rev-C: Region-level persistence over ReplayCache. 
+ReplayCache incurs additional clwb instructions and has to stall if there exists an outstanding unpersisted store at the end of a region until it becomes persisted to the NVM.  However,  SweepCache almost doesn’t need to pay such overhead since its unique architectural design can benefit from its high region-level parallelism (91%).
+
+Moreover, ReplayCache also loses persist coalescing as discussed in Section 2.2.
+
+### Q24-Rev-C: ReRAM read/write latency
+See Table 1 in our revision.
+
+### Q25-Rev-A: Does ReplayCache relies on JIT checkpointing?
+Yes, it relies on the JIT checkpoint to save registers.
+
+### Q26-Rev-A: 10.21% missed in Figure 11 (Figure 12 in revision)? 
+No. 10.21% is the total energy consumption and Figure 12 shows the energy for backup/recovery.
+
+### Q27-Rev-A: Does SweepCache introduce any additional random writes that also impact NVM durability？
+No.
+
+### Q28-Rev-A, C: Figure size too small.
+We will fix this in our final version.
+
+### Q29-Rev-B: Distinguish Hibernus/QuickRecall from NVP.
+Revision fixes that in Section-1 and 2.1.
+
+### References
+[a] Marzencki M, Ammar Y, Basrour S. Design, fabrication and characterization of a piezoelectric microgenerator including a power management circuit[J]. arXiv preprint arXiv:0802.3044, 2008.
+
+[b] Wu T, Ma K, Hu J, et al. Reliable and Efficient Parallel Checkpointing Framework for Nonvolatile Processor With Concurrent Peripherals[J]. IEEE Transactions on Circuits and Systems I: Regular Papers, 2022.
+
+[c] Wu T, Zhang L, Yang H, et al. An extensible system simulator for intermittently-powered multiple-peripheral IoT devices[C]//Proceedings of the 6th International Workshop on Energy Harvesting & Energy-Neutral Sensing Systems. 2018: 1-6.
+
+[d] Kempen T, Waser R, Rana V. 50x Endurance improvement in TaOx RRAM by extrinsic doping[C]//2021 IEEE International Memory Workshop (IMW). IEEE, 2021: 1-4.
+
+[e]https://e2e.ti.com/support/microcontrollers/msp-low-power-microcontrollers-group/msp430/f/msp-low-power-microcontroller-forum/454244/what-size-capacitor-is-needed-across-the-charge-pump-lcdcapx-pins-for-the-fr4133-lcd_e-module
+
+[f] https://www.ti.com/lit/gpn/TPS3806I33-Q1
+
+
+
+Comment @A1 by Reviewer A
+---------------------------------------------------------------------------
+@Reviewer Bto accept your submission subject to shepherding. Your shepherd will be in touch with you as defined by the shepherding process.
+
+The reviewers extensively discussed the paper; here is a list of the main changes that they would like to see in the final version. You can further discuss with your shepherd about making a concrete plan to address all issues.
+
+# 1. Comparison with NvMR 
+
+The comparison (both qualitative and quantitative) with NvMR, as promised in the rebuttal, should be present in the final version.
+
+# 2. Clarify behavior with large loops
+
+Discussion (possibly through an illustrative example) should be added to show how SweepCache can handle large loops efficiently
+
+# 3. Justification for non-volatile persist buffer
+
+It is still not clear why a persistent redo log is required. Failure atomocity should be possible also with a volatile redo log.
+One relevant example is the writeback buffer in Clank.
+More discussion of this aspect should be present in the final version.
+
+# 4. Examples of tiny peripherals
+
+It would be good to add practical examples of real systems with tiny peripherals that can be supported with a <1µF capacitor.
+
+
+Comment @A2 by Shepherd
+---------------------------------------------------------------------------
+Hi all,
+
+This is your shepherd checking in.  I wanted to explain how the shepherding process works: 
+- The latest comment from Reviewer A details the changes the reviewers need to see to accept this paper.
+- Read through the list and make sure you understand all four points. Please feel free to ask for clarification (by replying in HotCrp). 
+- Send me a [short] plan explaining how you will go about making the changes the reviewers have requested. I'll provide some feedback if necessary
+- Make the changes ASAP, and definitely before the shepherding deadline (which is still tbd)
+- I'll take a look at the changes and we'll iterate as necessary. 
+
+Please let me know if you have any questions about the shepherding process. I'll update you with firm due dates as soon as I get them.
+
+
+
+Shepherding Response by Author [Yuchen Zhou <zhou1166@purdue.edu>]
+---------------------------------------------------------------------------
+Thanks for your information!
+
+Here is our initial plan to make the changes the reviewers have requested.
+
+Question 1: 
+Since the NvMR authors don’t share their simulator code with us (they only gave us a very initial ARM simulator without their functionality), we plan to implement the NvMR on our simulator according to our understanding.  We plan to show the energy comparison results in Section 6.6 of our final version. 
+ 
+Question2: 
+We will plot a control flow graph example for the loops and their region formation in Section 4.1 to explain how we deal with large loops in our paper as the reviews requested. 
+ 
+Question3: 
+We will add the discussion in Section 3.2 to explain why the persist buffer should be non-volatile in our final version. 
+ 
+Question 4: 
+We will enumerate some examples in Section 5 to show some real systems with tiny peripherals can be supported with a <1µF capacitor in our final version.
+
+
+
+****************************************************************************************************
+****************************************************************************************************
+
+Dear Shepherd,
+
+==The following is our latest question and it would be appreciated if you could reply to us.==
+
+We have already implemented our version of NvMR and have SweepCache vs. NvMR results in our capacitor setting. But as you know,  NvMR relies on a supercapacitor (100mF) in their original paper while our greatest capacitor size is 1mF.  So may we ask which results you would like us to show in our paper (based on our capacitor setting or both)?  
+
+Thank you!
+
+
+**************************************************************************************************************************************************************************************************************
+
+Thanks for your reply!
+
+Due to the complex hardware design of NvMR, we found it very hard to support NvMR by using only a 1uF capacitor in our evaluation but it is applicable with a 5uF capacitor. So do you think it's OK for us to show the results at 5uF and 1mF?  By the way,  since we don't have too much space can we show the results only in texts? But we will try to add a figure if you think it is necessary.
+
+Thank you!
+
+
+****************************************************************************************************
+****************************************************************************************************
+
+Because of the different capacitor settings, it is a little hard to put the NvMR results in our existing figures.  We will highlight all the updates regarding the 4 issues in red color in our paper so that you can easily find them.
+
+Thank you!
+
+**************************************************************************************************************************************************************************************************************
+
+Dear Shepherd,
+
+We revised our paper according to your and other reviewers' suggestions and the attachment is our revision.  All our updates are highlighted in red color in the paper. It would be appreciated if you could tell us whether we need to do further modifications.
+
+Thank you!
+
+********************************************************************************************************************************************************************************************************
+
+Dear Shepherd,
+
+Our apologies for the delay. The thing is that we found a little bug in our simulation of NvMR; after fixing a couple of wrong parameters, we found that NvMR can work for even a 470nF capacitor (our default size) without stagnation. 
+
+Now Figure 14 shows the results for two more capacitors (470nF and 1uF). Please note that the overall trend of NvMR's performance remains the same.
+
+We appreciate your helpful comments and fixed all the raised writing issues.
+
+Thank you!
+
+**************************************************************************************************************************************************************************************************************
+
+Thank you very much!
+
+
+
+Comment @A3 by Shepherd
+---------------------------------------------------------------------------
+Good point. I'll be honest, I'd love to see 3 capacitor sizes-- 100mF, 1mf and something where SweepCache excels (maybe 1µf?), but I realize that may not be feasible. Given that this is a paper about truly tiny devices, I think it makes the most sense to compare to NvMR at 1mF if you can only do one size, and I'd say compare to it at 1mF and 1µF if you have time for two. In the spirit of fairness, you should explain where the trend is heading (given Figure 13d in the NvMR paper it's pretty clear NvMR performs better as power failure frequency goes down).
+
+
+Comment @A4 by Shepherd
+---------------------------------------------------------------------------
+On the capacitor sizes, 5µF sounds totally fine-- whatever was the smallest you could get to run. (It's also worth adding in text that you chose 5µF specifically because this is the smallest you could use to get NvMR to run since it's hitting a different design point).
+
+I'm wondering if the results could be added to one of your existing figures? I'll stop and take a look this weekend to see if I can provide. more specific suggestions.
+
+
+Comment @A5 by Shepherd
+---------------------------------------------------------------------------
+Overall the revision looks good-- it addresses all of the points the reviewers raised. I do want to dig into some of the new text a little bit, and I found a couple of typos.
+
+## Section 6.7
+- Figure 14 looks great-- it provides the kind of crossover point we were interested in.
+- What exactly does it mean for "the wake-up voltage to be secured"? Can you rephrase this so it's accessible to a broader audience?
+- Same question for "long-distance rollback". What exactly is it about these rollbacks that prevent NvMR from handling them at less than 2uF? (Presumably it's that they have too many values to rollback and that takes too much energy, but spelling it out helps the less familiar reader)
+- For the 1.9x speedup, it feels like there could be an "apples and oranges" comparison to other numbers in the paper. I assume this 1.9x number came from an average across the 5 capacitor sizes you tested with NvMR? The trouble is those differ from the capacitor sizes used in 11 and 9. It's not a problem, because this favors NvMR compared to the line up of smaller caps, but perhaps a couple words explaining that the 1.9x is from the specific set of capacitors tested would be useful.
+
+## Typos/Formatting
+- Hanging "re" from "architecture" in the second line of the abstract. See if you can fight with Latex a bit to prevent that
+- Bottom of first column page 4 to top of second column, "no way of interrupting program" --> no way of interrupting *a* program"
+- second column page 4, "i.e." should only have one comma following, it has two.
+
+
+Comment @A6 by Shepherd
+---------------------------------------------------------------------------
+Nice job chasing down the bug-- I'm always happy to see extra capacitor sizes. The edits to the NvMR section look good. I'll let the PC chairs know that you've completed all the points the reviewers wanted to see and you should be all set to submit the camera ready.

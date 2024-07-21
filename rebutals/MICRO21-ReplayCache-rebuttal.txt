@@ -1,0 +1,494 @@
+MICRO-54 Paper #676 Reviews and Comments
+===========================================================================
+Paper #676 ReplayCache: Enabling Volatile Caches for Energy Harvesting
+Systems
+
+
+Review #676A
+===========================================================================
+
+Paper Summary
+-------------
+ReplayCache is a software technique that takes advantage SRAM cache while using checkpointed register values to reexecute potentially unpersisted stores and successfully persist them to NVM. Reexecuting the stores during recovery, whether they were persisted or not at the time of crash, guarantees correct values being stored in NVM. This is achieved by supporting region level persistence where compiler constructs the regions such that the register used by stores values are not overwritten following stores by any instructions in the region. The stores are persisted to NVM in parallel with execution of instructions following them. ReplayCache achieves 80% of the performance that can be achieved by corresponding hardware technique that backs up NVSRAM (SRAM backed by NVM).
+
+Strengths
+---------
+Nice simple idea where persistence is supported at region level and crash recovery is enabled by having the compiler construct suitable regions that guarantee “store integrity”.
+
+Weaknesses
+----------
+Better comparison with ido's idempotent regions and regions used by ReplayCache (both enable recovery via reexecution of instructions all vs. stores for recovery). ReplayCache provided an optimization of the ido idea.
+
+Sensitivity study that studies relationship between regions size and performance.
+
+Novelty
+-------
+2. Incremental improvement
+
+Evaluation
+----------
+3. There are some minor issues with the evaluation, but they can be solved
+
+Impact
+------
+3. Likely to impact future research and/or products
+
+Writing Quality
+---------------
+4. Well-written
+
+Reviewer expertise
+------------------
+4. Expert
+
+Questions for Revision/Rebuttal:
+--------------------------------
+1. iDo vs. Replaycache: 
+Although the paper does not explicitly state this (I didn’t notice it), this paper is inspired by the idea proposed in the ido paper where idempotent regions are found by the compiler so that recovery is achieved by reexecuting the region. ReplayCache avoids reexecution of entire region by checkpointing the registers before failure occurs, only the stores need to be reexecuted while regions must be constructed such that store registers are not overwritten by later instructions. In other words, ReplayCache can be viewed as an optimization of iDo.  A discussion comparing similarities and differences should come early in the paper. Currently the paper simply states that ReplayCache has lower overhead.
+
+2. Sensitivity of Performance wrt Region size: 
+The paper would be stronger if sensitivity of performance to region size was studied.
+
+a.	To deal with spills to stack and circular dependences authors introduce additional region boundaries. Despite this, finally the sizes of constructed regions are bigger than I would have expected (16.4 instructions per region on average). However, maybe the average doesn’t convey the full picture. There may be some short regions with limited ILP opportunity.
+
+b.	How often are the power failures expected? If they can be frequent, having very large regions may be detrimental as it will increase the chances of crash while executing them and the cost of recovery during reexecution. The authors mention that no failures occur during recovery which is needed for the scheme to work. However, increased likelihood of crash during region execution leads to higher recovery cost following crash.
+
+c.	In summary points a and b suggest that there may a suitable region size (not too small to limit ILP and not too big to increase crash recovery cost due to greater chance of crash occurring during the regions execution). 
+
+It would be nice if the above trade-offs are studied as they impact overall performance of ReplayCache.
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+3. Revision/Rebuttal would be somewhat useful -- I am open to revising my
+   score based on how satisfactorily the concerns are addressed.
+
+Comments to authors
+-------------------
+I do not have any suggestions for improvement other than those mentioned in the Questions section. The idea is intuitive and appealing, the construction of regions is explained clearly including dealing with the complexity of determining region boundaries, and the results of evaluation are encouraging.
+
+Overall Merit
+-------------
+4. Good (B) -- Solid paper with some deficiencies
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+4. Good (B) -- Solid paper with some deficiencies
+
+Post Rebuttal/Revision Comments
+-------------------------------
+I have read the response. Comparison with iDo to clarify the similarity in approaches but benefits due to register checkpointing would strengthen the paper.  Simply pointing out they are different because of the conditions that regions must satisfy ignores the big picture.
+
+
+
+Review #676B
+===========================================================================
+
+Paper Summary
+-------------
+This paper presents ReplayCache,  a software-only approach to enable energy harvesting systems to use volatile data cache. The main technique is to re-execute the potnetially unpersisted stores in the wake of power failure to restore the consistent NVM state. The store replay is supported by enabling intact operand registers of store instructions in partioned regions.
+
+Strengths
+---------
+1. The main idea of store replay presented in the paper seems to be simple yet practical/useful.  
+2. In terms of implementation, naively, to replay all unfinished programs will be unrealistic. The designed region-level persistence compilation method elegantly solved the problem of costly replay. Also, the cost of maintaining persistence in a region can be reduced by exploiting ILP. 
+3. The evaluation is detailed and comprehensive.
+
+Weaknesses
+----------
+No obvious weaknesses to me. But I would like to see more discussion on ReplayCache's performance sensitivity or IPL efficiency to different applications and why the partitioning works better/worse for some of them.
+
+Novelty
+-------
+3. New contribution
+
+Evaluation
+----------
+3. There are some minor issues with the evaluation, but they can be solved
+
+Impact
+------
+3. Likely to impact future research and/or products
+
+Writing Quality
+---------------
+3. Adequate
+
+Reviewer expertise
+------------------
+2. Some familiarity
+
+Questions for Revision/Rebuttal:
+--------------------------------
+1. We see some variations of the ILP efficiency across applications. What characteristics of a program/application will make the current ILP work better on them?
+2. How much room do you think there is to improve the partitioning algorithm to further improve the ILP? Application-specific partitioning? Adaptive region size?
+3. What is the penalty of ReplayCache in terms of compilation cost and associated energy cost? Do you have data on it?
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+2. Revision/Rebuttal would be nice, but not essential (though it would be
+   nice to see my concerns addressed)
+
+Comments to authors
+-------------------
+Overall, this is a high-quality paper with interesting ideas and solid implementation. I don't have additional comments except the questions above.
+
+Overall Merit
+-------------
+5. Very good (A) -- High-quality paper that adds insight to the field
+
+
+
+Review #676C
+===========================================================================
+
+Paper Summary
+-------------
+The paper presents a novel approach to add volatile cache into energy harnessing devices. The key idea is to separate code into regions, with region's store operations reexecutable upon a power outage. Simulation results indicate that the technique can produce significant speedups.
+
+Strengths
+---------
+* A novel and promising idea
+* Good results
+* Good potential impact
+
+Weaknesses
+----------
+* Some aspects of the region identification can be more clear
+* Some aspects of the compiler support can be more thoroughly evaluated
+
+Novelty
+-------
+3. New contribution
+
+Evaluation
+----------
+3. There are some minor issues with the evaluation, but they can be solved
+
+Impact
+------
+4. Likely to have major impact on future research and/or products; inspire
+   new research or start a new line of research/products
+
+Writing Quality
+---------------
+3. Adequate
+
+Reviewer expertise
+------------------
+2. Some familiarity
+
+Questions for Revision/Rebuttal:
+--------------------------------
+Please respond to the comments on region identification and the evaluation of the compiler support.
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+3. Revision/Rebuttal would be somewhat useful -- I am open to revising my
+   score based on how satisfactorily the concerns are addressed.
+
+Comments to authors
+-------------------
+The reviewer enjoyed reading the paper. The idea is intriguing and novel, and the results are promising. Good contributions!
+
+Some aspects of the region identification can be made more clear. The reviewer might have missed it: how are control flows treated in the region identification? Can a code region span across merging/splitting points of control flows? What are the lengths of the regions observed in the evaluation? 
+
+A important part of the paper is on the compiler support. The evaluation section could give a more direct evaluation on the effectiveness of that proposed compiler support. The proposed compiler support seems to optimize the region size through transformations during the back-end code generation. It could, for instance, help if the authors compare the results (both performance and region size) to those from a naive compiler support without the optimizations. The ablation study could demonstrate the usefulness of the sophisticated design. 
+
+The performance improvement looks impressive. It could however help if the paper provides some information on how competitive the baseline is. Given that there have been many previous studies optimizing NVM performance, it may be less satisfying to compare only to the basic implementations. 
+
+Nitpick: 
+The paper mentioned a few times that the solution is a pure software solution and can be deployed on existing devices. Wouldn't a volatile cache has to be added into the device before the technique can work?
+
+Overall Merit
+-------------
+5. Very good (A) -- High-quality paper that adds insight to the field
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+5. Very good (A) -- High-quality paper that adds insight to the field
+
+Post Rebuttal/Revision Comments
+-------------------------------
+The reviewer remains positive about the work.
+
+
+
+Review #676D
+===========================================================================
+
+Paper Summary
+-------------
+This paper proposes ReplayCache to reduce the energy consumption of NVM-caches and improve the checkpointing performance. The ReplayCache scheme divides the original program into separate code regions. When going through a power failure, the executing region will be discarded and then replayed to resume the program status. Experiments show that the proposed method achieves good speedup with moderate binary size inflation.
+
+Strengths
+---------
+1.	ReplayCache is a software-only scheme avoiding hardware changes.  
+2.	The writing is clear and easy to follow.
+
+Weaknesses
+----------
+1. The region-based partitioning is incremental.
+2. The recovery overhead is not clear. 
+3. There are some grammar mistakes to be fixed.
+
+Novelty
+-------
+2. Incremental improvement
+
+Evaluation
+----------
+2. The evaluation is shallow and there are major weaknesses
+
+Impact
+------
+2. Likely to have minor impact
+
+Writing Quality
+---------------
+2. Needs improvement
+
+Reviewer expertise
+------------------
+2. Some familiarity
+
+Questions for Revision/Rebuttal:
+--------------------------------
+There are other region based technique in the literature. Why does ReplayCache compiler give better partitioning results? More comparisons are needed.
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+3. Revision/Rebuttal would be somewhat useful -- I am open to revising my
+   score based on how satisfactorily the concerns are addressed.
+
+Comments to authors
+-------------------
+1.	There are a number of checkpointing techniques for energy harvesting systems, such as [11, 65, 20] “Fixing the Broken Time Machine: Consistency-Aware Checkpointing for Energy Harvesting Powered Non-Volatile Processor”, DAC 2015. They also use regions (blocks) to minimize checkpointing overhead. Why does the ReplayCache compiler give better partitioning results? More comparisons are needed.
+2.	The binary size of the generated code is large. According to Figure 13, in some benchmarks such as jpeg, mpeg2enc and typeset, the binary size inflation problem is non-trivial, up to 94.4%. Why do these benchmarks bring large binary size inflation while others don’t?
+3.	The runtime overhead of the code is not evaluated. As the compiler would insert many code segments into the original code, the runtime performance of the original code might be influenced. The influence might be severe as the code regions are small and there would be a great number of regions. The runtime overhead should be evaluated and analyzed. 
+4.	In Section 6.5, though the sensitivities of different caches are evaluated, the results are not analyzed. Why is ReplayCache more sensitive to cache sizes and NVM technologies than NVSRAM? 
+5.	There are grammar mistakes and other mistakes in the paper. For instance, in the introduction, “leading to consume high energy” can be “leading to high energy consumption”. “On averages” should be “On average”. In the conclusion, “ReplayCache significantly improves the performance by 8.46x-8.59x” should be “8.46x-8.95x”.
+
+Overall Merit
+-------------
+3. Average (C) -- Average-quality paper with many deficiencies that are
+   difficult to overlook. Describe changes needed for this paper to become
+   Good (B).
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+3. Average (C) -- Average-quality paper with many deficiencies that are
+   difficult to overlook. Describe changes needed for this paper to become
+   Good (B).
+
+Post Rebuttal/Revision Comments
+-------------------------------
+I have read the rebuttal.
+
+
+
+Review #676E
+===========================================================================
+
+Paper Summary
+-------------
+This paper describes ReplayCache, a set of compiler transformations that enable the use of a conventional volatile SRAM cache in an energy-harvesting system. Volatile caches are intuitively not a good fit for energy-harvesting systems, which experience frequent power outages which would cause the state of a volatile cache to be lost. ReplayCache re-executes recent store instructions to recompute lost dirty cache lines, allowing volatile caches to be used which is a big performance and energy win.
+
+Strengths
+---------
+Caches are a great idea, and this paper allows an energy-harvesting system to reap the speed and energy benefits of a conventional cache design. There's only a bit of extra work on power outages to recover lost dirty lines. ReplayCache is mostly a set of (not-too-exotic) compiler passes. It's a clever, but simple, idea that yields a big win.
+
+Weaknesses
+----------
+The writing quality of the current version of the paper is not very good.
+
+Novelty
+-------
+3. New contribution
+
+Evaluation
+----------
+4. The evaluation is excellent and demonstrates the value of the idea
+
+Impact
+------
+3. Likely to impact future research and/or products
+
+Writing Quality
+---------------
+2. Needs improvement
+
+Reviewer expertise
+------------------
+2. Some familiarity
+
+Questions for Revision/Rebuttal:
+--------------------------------
+I would appreciate more discussion of how asynchronous write-backs (caused by stores) interact with cache evictions of dirty blocks. I am concerned that there is a kind of race here, since both the write-back and the eviction occur after the store instruction but I'm not sure how the write-back and eviction may be ordered with respect to one another.
+
+Also, I inferred from the paper that write-backs are handled in a FIFO manner, but I don't recall the paper explicitly mentioning this anywhere. It would be good to clarify this.
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+2. Revision/Rebuttal would be nice, but not essential (though it would be
+   nice to see my concerns addressed)
+
+Comments to authors
+-------------------
+I really liked reading this paper, and appreciate the mix of hardware and software topics that come together in the ReplayCache system. ReplayCache makes the observation that we only need to retain the small, dirty subset of a volatile cache on a power outage. Instead of walking the cache to find these dirty lines (which would be expensive) or persisting the entire cache (as the NVSRAM design does, and which is also expensive), ReplayCache uses compiler analysis to recompute the lost lines directly, needing just a few registers' worth of persistent state. This is a neat way to sidestep the problem of having to find the dirty lines in the cache. I also liked how ReplayCache introduces some memory-level parallelism into an in-order processor to help hide the latency of NVM writes. It seems like a very reasonable amount of complexity to introduce given the performance upside.
+
+ReplayCache is compared to a set of recent energy-harvesting cache schemes. ReplayCache handily outperforms these prior schemes, except for the NVSRAM proposal which is based on some future non-volatile memory technologies. I'm not well-placed to validate the legitimacy of these projections that NVSRAM is based upon. ReplayCache certainly has the advantage that it is implementable with today's technology. With faster non-volatile memories, ReplayCache would get faster, too, so it might be the case that ReplayCache ages fairly well even as non-volatile memories improve. ReplayCache can also take advantage of improvements in building conventional SRAMs.
+
+The writing quality of this paper is not very high, it could benefit from extensive detailed editing. The typos and grammar errors were pervasive and distracting, but fixable. For example, here's one way I'd edit the first two sentences of the Abstract:
+
+> Energy-harvesting systems have the unique benefit of ultra-long, maintenance-free deployment and are expected to become more prevalent in the era of the Internet of Things. However, due to their lack of a battery, they suffer frequent and unpredictable power outages.
+
+On a smaller note, I was initially (in Sections 1-3) concerned about how control flow within a *store-register-preserving region* would be handled, since it would complicate tracking how much progress was made within a region before the power went out. Not until Section 4.1 is it stated that "ReplayCache initially forms regions at function call boundaries and the end of conditional branches", which makes it clear that there is no conditional control flow within a region. I wish this statement had come earlier in the paper.
+
+Overall Merit
+-------------
+4. Good (B) -- Solid paper with some deficiencies
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+4. Good (B) -- Solid paper with some deficiencies
+
+
+
+Review #676F
+===========================================================================
+
+Paper Summary
+-------------
+This paper presents ReplayCache, a software-only scheme to provide a crash-consistent volatile data cache for energy harvesting devices with intermittent power supply. ReplayCache proposes a replay-based solution to restore potentially unpersisted stores by preserving store operands untouched until the end of the program region they belong to. ReplyCache substantially outperforms the baseline energy harvesting devices with no cache and provides a competitive performance to the NVSRAM cache which requires both SRAM and advanced NVM, while ensuring correct resumption in face of frequent power outages.
+
+Strengths
+---------
+* Software-only technique that can be applied to commodity energy harvesting devices
+
+* Sensible design with decent speedups
+
+Weaknesses
+----------
+* Evaluation conducted not on a real device but on the gem5 simulator
+
+Novelty
+-------
+3. New contribution
+
+Evaluation
+----------
+3. There are some minor issues with the evaluation, but they can be solved
+
+Impact
+------
+2. Likely to have minor impact
+
+Writing Quality
+---------------
+4. Well-written
+
+Reviewer expertise
+------------------
+3. Knowledgeable
+
+Questions for Revision/Rebuttal:
+--------------------------------
+* What is the reason why the authors use the gem5 simulator instead of a real IoT device (e.g., TI MSP430 with FRAM)?
+
+* What is the impact of ReplayCache on the recovery time?
+
+* How much does ReplayCache increase the dynamic instruction count over the baseline with no cache?
+
+* How much memory space do RM and CM take? Can this potentially increase the memory pressure?
+
+Importance of Revision/Rebuttal in Determining Your Post-Response Score
+-----------------------------------------------------------------------
+2. Revision/Rebuttal would be nice, but not essential (though it would be
+   nice to see my concerns addressed)
+
+Comments to authors
+-------------------
+I enjoy reading this paper. While I am not claiming expertise in this area, the proposed design looks sound and sensible. The paper is well written and evaluation demonstrates promising results. Most of all, ReplayCache does not require any special hardware support, and hence can be applied to commodity hardware. Overall, this is a solid paper.
+
+Perhaps the only major issue is its evaluation conducted on the gem5 simulator instead of using a real device. For example, TI MSP430 has a version with FRAM (NVM) memory, and I am wondering why the authors use the simulator instead of a real device. As far as I know, TI MSP430 does not provide NVFF, so it cannot model NVP [42]. However, QuickRecall [21] does not require NVFF, so QuickRecall+ReplayCache can be implemented on the real device. In fact, QuickRecall itself was prototyped on the MSP430 device. Also, evaluation can be further improved by including more in-depth analysis on recovery time, dynamic instruction count, and memory space overhead. Please answer the questions in the "Questions for Revision/Rebuttal" section.
+
+Overall Merit
+-------------
+4. Good (B) -- Solid paper with some deficiencies
+
+Post Rebuttal/Revision Overall Merit
+------------------------------------
+4. Good (B) -- Solid paper with some deficiencies
+
+
+
+Response by Author [Jianping Zeng <zeng207@purdue.edu>] (1132 words)
+---------------------------------------------------------------------------
+We appreciate the reviewers' thorough comments. Please see our revision in blue text.
+
+### Q1--Reviewer-C: Control flows and region length
+ReplayCache starts a new region at a conditional branch (i.e., a splitting point), yet a region may include a merging point (as discussed in Section 4.1 and illustrated in Figure 5).
+
+Each region consists of 16.4 instructions on average (as shown in Figure 18).
+
+### Q2--Reviewer-A: Comparison to iDO
+iDO and ReplayCache are similar in the sense that they do not rely on "undo" logging and instead they "re-execute"---though ReplacyCache only does stores.
+
+However, unlike iDO, ReplayCache compiler does not have to cut memory anti-dependence or checkpoint registers. Instead, ReplayCache ensures that all the potentially unpersisted stores are re-executable by forming a region under the three (different) constraints: (1) store operand registers are not overwritten, (2) control flow is recoverable (by cutting a region at a conditional branch), and (3) recovery code is bounded (by an energy model [60]) for safe recovery, i.e., no power failure during the recovery.
+
+### Q3--Reviewer-A/B: region length and ILP
+More precisely speaking, the potential ILP is determined by the distance between the last store and the region boundary. An application with many such regions, that have many instructions following the last store, shows high ILP.
+
+On average, there are 4.4 instructions in between (Figure 19), resulting in  63% ILP efficiency (Figure 12).
+
+### Q4--Reviewer-B/C: Optimization? 
+ReplayCache attempts to form a longer region (for ILP) while satisfying the three constraints mentioned in Q2. That said, ReplayCache doesn't leverage sophisticated backend optimizations to guarantee the optimality (longest in the constraint-solving candidates) of region formation.
+
+We believe that the ILP can be significantly improved by unrolling loops to extend region size, hoisting stores to enlarge the distance, and integrating new algorithm into the register allocation in a way that a stack spill does not necessarily lead to a new region (and thus makes the region size longer). We leave these optimizations as future work.
+
+
+### Q5--Reviewer-A/F: Power failures frequency, region length, and recovery cost
+In Figure 7, Trace 1 and 2 include ~20 and ~400 power outages for a 30 second interval, respectively.
+
+ReplayCache re-executes stores during recovery. Thus, its recovery cost depends on the number of stores in a region. ReplayCache bounds the number of stores per region based on the energy model [60]. On average, there are 2.18 store instructions per region. Although it is technically possible to form a shorter region, the recovery cost (for 2.18 stores) are not already significant. As a result, it was more beneficial to form a longer region for better exploiting ILP.
+
+For Trace 2 (with frequent power failures), the recovery time contributes to less than 5% of total execution time.
+
+### Q6--Reviewer-E: Race between asynchronous write-back and cache eviction
+No race exists in between. Fist of all, there is no such thing as cache evictions of dirty blocks. That is because we simulate the same semantics of x86 CLWB, i.e., it updates the cacheline as CLEAN before starting the write-back of the data to NVM. This implies that all the cachelines being evicted are already in a CLEAN status, and thus they can be simply dropped without write-back. 
+
+### Q7--Reviewer-D: Sensitivity
+Both NVSRAM and ReplayCache schemes are not sensitive to NVM technology (Figure 16)---though they are to cache size.
+
+NVSRAM is more sensitive to cache size than ReplayCache (Figure 15) for two reasons. First, the benefit of NVSRAM's "fully-asynchronous" write-back scheme gets greater as the cache size increases while ReplayCache's asynchronous write-back window is limited by the region boundary. Second, the benefit of NVSRAM's warm cache effect (discussed in Section 6.2.2) gets greater as the cache size increases whereas ReplayCache restarts from a cold cache.
+
+
+### Q8--Reviewer-C: Better Baseline?
+Prior energy-harvesting system works (including [11,20,65,DAC'15 mentioned by Reviewer-D] are not directly applicable to the target system with a volatile cache. Also, prior NVM works for server systems are just too heavy to be used for energy-harvesting systems.
+
+### Q9--Reviewer-D: Better partitioning?
+Again, the prior works [11,20,65,DAC'15] assume no-cache systems. While [11,65] checkpoint registers, ReplayCache compiler does not (see Q2). Unlike ReplayCache, [DAC'15,65] both partitions anti-dependent load-store pairs to form idempotent regions; [20] does this in hardware, i.e., dynamically forming anti-dependence-free regions. In summary, ReplayCache is the only region formation that works for cache-enabled systems, and it doesn't require those
+mentioned above.
+
+More importantly, ReplayCache's performance improvement comes from the use of volatile cache (not from a better partitioning algorithm). Although ReplayCache's region formation incurs some performance overhead (see Q10), the benefit of using volatile caches outweighs the cost of additional instrumentation and CLWB-based persistence management. 
+
+### Q10--Reviewer-D: Run-time overhead
+Figure 8 shows the run-time overhead of ReplayCache. NVSRAM represents the performance improvement (with a volatile cache) for an uninstrumented code, whereas ReplayCache shows the speedup for an "instrumented" code without power outages. When comparing two, ReplayCache's instrumentation (and region-level persistence) incurs ~25% performance overhead, though it can be addressed by optimizations mentioned in Q4. Note that as shown in Figure 9/10, this performance gap is significantly reduced when there are frequent power outages---that are the norm of energy-harvesting systems---because NVSRAM spends energy for checkpointing/restoring the entire cache across each outage.
+
+### Q11--Reviewer-F: Dynamic instruction count, RM/CM overhead, and memory pressure
+There is an average 2.49% instruction count increase. Please see the (new) Figure 14 in the revision for details.
+
+Our apologies for the incorrect numbers in the original Fig 13; the data was generated from wrong setup, so we fixed it with the correct data. As the new Fig 13 shows, RM and CM account for 0.4% and 0.1% binary size increase on average; please see the revision for details. Although the metadata is loaded to memory, it is only a boot-time cost without polluting cache. Thus, the metadata won't put pressure on memory usage of an application at run time.
+
+### Q12--Reviewer-D: Binary size
+According to the new Fig 13, only two applications show significant increase, i.e., typeset (35%) and jpeg (14%). That is because they have lots of small regions---increasing the metadata (RM, CM, and SC table) size---while other applications don't.
+
+### Q13--Reviewer-B: Compilation time and energy
+The time complexity of ReplayCache compiler's analyses is linear to program size (as discussed in Section 4). We observed that ReplayCache increases the compilation time by only 3% on average. The final copy will provide more details.
+
+As discussed in Q10, without power failure, ReplayCache (with instrumentation) incurs 25% performance overhead (~= 25% energy overhead) when NVSRAM (without instrumentation) is used as a baseline. However, as Figure 11 shows, with power failure, ReplayCache's energy consumption is on par with NVSRAM (which should spend energy to copy cache states to the NVM counterpart).
+
+ReplayCache's performance and energy consumption are consistently better than the case without a cache as expected.
+
+### Q14--Reviewer-F: MSP430
+MSP430 does not have a volatile cache; no commodity energy-harvesting systems have a cache.

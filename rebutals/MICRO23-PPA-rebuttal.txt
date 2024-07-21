@@ -1,0 +1,699 @@
+MICRO-56 Paper #52 Reviews and Comments
+===========================================================================
+Paper #52 Persistent Processor Architecture
+
+
+Review #52A
+===========================================================================
+* Updated: Jul 14, 2023, 9:44:03 AM UTC
+
+Paper summary
+-------------
+The paper proposes a mechanism (PPA) to avoid inconsistency upon power loss caused by non-persisted stores when using persistent main memory (e.g., Intel Optane).
+
+PPA leverages the existing register renaming capability of OoO cores plus some extra bookkeeping structures to keep values and destination addresses of committed stores as well as values of committed architectural registers. These values are persisted upon power loss (using a small buffer capacitor) and restored at power on.
+
+PPA dynamically builds persistence windows that are experimentally shown to be large enough to amortize the cost of forcing persistence.
+
+Main Strengths
+--------------
+PPA integrates well in existing OoO processor designs and leverages the existing register renaming mechanism in a new way
+
+Main Weaknesses
+---------------
+Didn't find major weaknesses. While a real implementation will require a more detailed study, the level of analysis seems adequate for a research paper.
+
+How easy it is to read and understand the paper?
+------------------------------------------------
+1. Very clear: I had no trouble understanding the work.
+
+Comments for authors
+--------------------
+I enjoyed reading this paper: it describes a clear problem and evaluates a simple yet effective solution.
+In general the paper is easy to read, but there are some typos scattered around:
+
+Abstract: "all sort of program" --> all sort of programs
+Sec. 1: "program is too slower" --> program is slower
+Sec. 2: "Pentium onwards 4" --> Pentium 4 onwards
+Sec. 4.1: "It ensures" --> "It" what?
+Sec. 4.2 : "r2's previous definition of" --> remove "of"
+Sec. 5: "being store exists" --> being stored exists
+Sec. 6.10: "energy mode" --> energy model
+
+One additional discussion point that could make the paper stronger would be motivating why PRFs are so large and they are utilized so little on average (see Fig. 5).
+That being said, the sensitivity study in Fig. 13 shows that PPA's overhead is not very large even with a much smaller PRF.
+
+The discussion of actual implementation could be a little more detailed in terms of how the SuperCap / Li-thin buffer power provider can be integrated in the SoC. Some parts of the paper are a bit repetitive and space could be made for such a discussion
+
+A little bit more background on persistent memory would help unfamiliar readers, for example explaining what the WPQ is.
+
+One detail that is not really evaluated is the impact of requiring an acknowledgement from the persistent memory whenever a store is completed. Does that already happen or is that a new requirement?
+
+Why is handling I/O operations different? ("Handling I/O operations in Sec. 5).
+Is that because writes to I/O devices might not be idempotent or some other reason? It would be good to be explicit in the text.
+
+Figure 7 has circled numbers that are not referenced in the text.
+Either remove the numbers or reference them.
+
+Questions/Issues for the authors to address in the rebuttal/revision
+--------------------------------------------------------------------
+It would be good to add some relevant background material in Section 2 (Background) about persistent memory architecture, for example, explaining how the WPQ works.
+
+What is the data source for Figure 5? It would be nice to see a distribution of utilization, rather than just the average (e.g., CDF or histogram of the number of allocated registers across execution).
+
+Is there a specific reason for simulating a 2-level cache hierarchy instead of having a private L2 cache, as is common in most modern server-class multicores?
+Related clarification on the methodology: you simulate an 8-core processor, but the workloads you use seem to be (mostly?) single-threaded. Did you only run one single-thread application at a time? Are any applications multithreaded?
+
+Figure 10 might be clearer if presented as number of stall cycles due to waiting for persisting all stores in a persistence window, rather than "ILP efficiency", the definition of which may not be obvious.
+
+While not absolutely necessary, one relevant comparison point to put things into perspective would be comparing with a system that only uses 32GB of DRAM (i.e., no persistence).
+Such a comparison will show the performance cost of ensuring whole-system persistence (which PPA enables, compared to simply using Optane as main memory).
+
+Pre-rebuttal overall merit
+--------------------------
+2. Accept -- high quality paper with minor issues that can be easily
+   overlooked. Should have in the program.
+
+Post-rebuttal overall merit
+---------------------------
+2. Accept -- high quality paper with minor issues that can be easily
+   overlooked. Should have in the program.
+
+Would you like to champion this paper?
+--------------------------------------
+2. No
+
+Reviewer expertise
+------------------
+3. Some familiarity: I have a passing knowledge of this topic but do not
+   follow the relevant literature.
+
+Reviewer confidence
+-------------------
+1. High confidence: I understand the key aspects of the paper to a great
+   extent.
+
+
+
+Review #52B
+===========================================================================
+* Updated: Jul 11, 2023, 6:05:58 PM UTC
+
+Paper summary
+-------------
+The paper presents PPA (Persistent Processor Architecture) to handle memory inconsistency situations for processors that uses NVM as the persistent storage. The method proposed in the paper is a fully HW based solution to exploit the register renaming logic to delay the release of physical registers associated with store operations in a region. The regions are not static, and determined by the availability of physical registers in the register rename logic. In the case of a power failure, the store operations in the region are replayed to the NVM to main consistency. Additional hardware is proposed to hold store operation state such as the order of committed stores in the region, last committed PC value and a mask vector register to keep track of physical registers used by stores in the region. When the power is lost, the CPU will need to store the states held in these additional hardware as well as storing the contents of the physical register file and rename commit table onto the same NVM by using a supercapacitor. The proposed method was implemented in a full system simulator and performance overhead is measured.
+
+Main Strengths
+--------------
+This is a fully hardware based solution transparent to SW.
+The hardware overhead to support the whole system persistence is not significant.
+
+Main Weaknesses
+---------------
+The microarchitectural details of the JIT checkpointing is superficial. 
+Power delivery and the size of the supercapacitor required during the JIT checkpointing mode are back of the envelope estimations, and do not consider additional HW overheads.
+
+How easy it is to read and understand the paper?
+------------------------------------------------
+1. Very clear: I had no trouble understanding the work.
+
+Comments for authors
+--------------------
+In general, the paper is clear and the flow is easy to track. At times, there are repetitions as in PPA Overview and Implementations repeat the concepts and how the method works. These repetitions can be removed.
+
+The paper just focuses on the quantification of performance overheads, which is good. The most important component in this study is the supercapacitor when the power failure occurs. The quantification of the energy storage capacity of this capacitor is estimated using a backend of the envelope calculations, which was disappointing. The hardware overhead required for JIT checkpointing of the highlighted microarchitectural registers/RAMs is not described.
+
+Questions/Issues for the authors to address in the rebuttal/revision
+--------------------------------------------------------------------
+Q1: How are the contents of MaskReg, Physical Register File, Last Committed PC, CRT and CSQ drained to the NVM during the JIT checkpointing mode when the power is lost? There must be a state machine or control block that sequences the draining operations. The control block must be connected to these registers and queues, groups the data, tag them and send them to the NVM. What is the overhead of this control block? First, I can't see the description of this control block. There is also no description of the power delivery to the hardware blocks that are dual powered by the normal power source and the supercapacitor. How are the two power sources connected to these microarchitectural blocks (i.e. MaskReg, Physical Register File, Last Committed PC, CRT and CSQ)?
+
+Q2: Section 6.10 is full of assumptions.  How long does it take to drain all states by the control block to the NVM in your simulations? Why haven't you modelled this rather than using some data in [42]?
+
+Pre-rebuttal overall merit
+--------------------------
+4. Weak reject -- fair work with some flaws that are difficult to overlook.
+   Would prefer it doesn't appear in the program, but will not fight
+   strongly.
+
+Post-rebuttal overall merit
+---------------------------
+4. Weak reject -- fair work with some flaws that are difficult to overlook.
+   Would prefer it doesn't appear in the program, but will not fight
+   strongly.
+
+Would you like to champion this paper?
+--------------------------------------
+2. No
+
+Reviewer expertise
+------------------
+3. Some familiarity: I have a passing knowledge of this topic but do not
+   follow the relevant literature.
+
+Reviewer confidence
+-------------------
+1. High confidence: I understand the key aspects of the paper to a great
+   extent.
+
+
+
+Review #52C
+===========================================================================
+* Updated: Jul 14, 2023, 11:50:29 PM UTC
+
+Paper summary
+-------------
+In this paper, the authors propose a persistent processor microarchitecture for whole system persistence. The paper repurposes existing features in out-of-order ILP processors, such as the rename map tables in the front and backend of the pipeline and the expanded non-architectural register file. The goal is to preserve store integrity. The idea requires changes to the pipeline. Unfortunately, the paper's goal could be achieved by eADR in modern Intel processors, which also uses super-capacitors for preserving cache contents.
+
+Main Strengths
+--------------
+- Software transparency
+- Interesting alternative to eADR
+
+Main Weaknesses
+---------------
+* Motivation for whole-system persistence is extremely weak. The focus of the work is very narrow. In reality, persistence demands knowledge of software. It needs to be clear what is to be persisted
+
+* The proposed approach puts pressure on PRF (PRF is a energy-hungry + limited resource)
+
+* The idea is not needed in the presence of eADR
+
+How easy it is to read and understand the paper?
+------------------------------------------------
+2. Could be better: some non-trivial bits are missing and/or difficult to
+   understand; the writing is rough in some places.
+
+Comments for authors
+--------------------
+* The author's claim that physical registers are under-utilized is not rigorously evaluated. The trend is for increasing the number of physical registers.
+
+* The claims in the introduction are wrong and misinformed. It is by design that in the memory mode DRAM becomes a cache for NVM. Hence, persistence is not required or guaranteed. If persistence of NVM is needed one needs to use the App Direct mode.
+
+* The overhead of persisting every store operation to NVM is likely to be EXTREMELY high. Hence, it is not a good idea to blindly persist every store (i.e., equivalent to putting a persist barrier in software after every store).  You can actually modify SPEC/compiler to use a persist barrier after every store to measure the overhead. That is why disciplined persistent memory programming models use transactions.
+
+* The paper does not perform a rigorous sensitivity study with ReplayCache (e.g., changing region granularity) to quantify the overhead.
+
+Pre-rebuttal overall merit
+--------------------------
+4. Weak reject -- fair work with some flaws that are difficult to overlook.
+   Would prefer it doesn't appear in the program, but will not fight
+   strongly.
+
+Post-rebuttal overall merit
+---------------------------
+4. Weak reject -- fair work with some flaws that are difficult to overlook.
+   Would prefer it doesn't appear in the program, but will not fight
+   strongly.
+
+Would you like to champion this paper?
+--------------------------------------
+2. No
+
+Reviewer expertise
+------------------
+1. Expert: I have written one or more papers on this topic and/or I
+   currently work in this area.
+
+Reviewer confidence
+-------------------
+1. High confidence: I understand the key aspects of the paper to a great
+   extent.
+
+
+
+Review #52D
+===========================================================================
+* Updated: Jul 21, 2023, 4:55:45 PM UTC
+
+Paper summary
+-------------
+This paper targets the use of persistent memory (such as, Intel Optane) in memory mode (i.e., the DRAM is used as a cache on top of Optane). More specifically, this paper aims at providing whole-system persistency when power failures occur without any support at the OS/library/application level. The paper proposes the Persistent Processor Architecture. PPA repurposes the OoO logic that is already present in aggressive cores that equip server systems to ensure whole-system persistency. The key idea of PPA is to use the physical register file in order to ensure that store operations have written their results in persistent memory. Hence, with PPA the physical registers are not freed at commit time as in regular OoO cores, but only after the data have been also written in the persistent memory. The evaluation results are based on gem5 and show improvements with other prior approaches that require compiler support in terms of performance, energy, and area.
+
+Main Strengths
+--------------
++ The idea of repurposing the physical register file to provide whole-system persistence is smart and elegant, and avoids application/runtime/OS support.
+
++ The paper is well-written and explains very well the proposed mechanism.
+
++ The evaluation is very comprehensive.
+
+Main Weaknesses
+---------------
+- The motivation for PPA is weak. It is unclear why whole-system persistency is needed when using persistent memory in memory mode in server cores (i.e., aggressive OoO cores).
+
+- The implications of persisting stores in the cache hierarchy are not discussed in detail.
+
+How easy it is to read and understand the paper?
+------------------------------------------------
+1. Very clear: I had no trouble understanding the work.
+
+Comments for authors
+--------------------
+This is a very interesting paper that provides a simple, complete, and well-thought solution to a difficult problem. The authors have done a very good job in describing the limitations of prior approaches, as well as the operation of the proposed architecture. The benefits of using PPA compared to prior approaches are clear, i.e., no need to rely on software support at any level.
+
+However, the paper does not motivate the work sufficiently, putting in question the usefulness of the proposed mechanism. More specifically, the authors are targeting using persistent memory in memory mode, i.e., the DRAM acts as a cache on top of persistent memory, and applications do not leverage at all the persistency characteristics of persistent memory. I expect that the persistency characteristic is of importance only for those applications that are aware of persistent memory. It is unclear why one should care about persistency in that mode.
+
+In addition, the authors are targeting to repurpose existing microarchitectural structures of aggressive OoO cores. However, prior works that have focused on ensuring fast whole-system persistency, have typically targeted energy-harvesting systems or systems that rely on intermittent computing. The cores that are typically used in such systems are in-order energy-efficient cores or even microcontrollers. Hence, I think it is very important to clearly motivate the need of such design and the potential benefits (i.e., is it faster recovery time after power failure? If so how often do power failures occur in servers/datacenters?).
+
+Regarding the key mechanisms of PPA, I have the following comment/question: the implications of the key PPA mechanisms in the cache coherence protocol and cache management/organization in general are not clearly explained. Are there any assumptions regarding the organization of L1 and L2, i.e., do they need to be write-through? Furthermore, I am surprised by the low performance overhead that PPA introduces, and I am wondering how the results would change with a three-level cache hierarchy (which is the typical cache organization in server multicores).
+
+Finally, ThyNVM [MICRO'15] seems to be a closely related work that is not cited by the paper. ThyNVM shares the same goal with PPA and does not require compiler support. The authors are suggested to compare their approach with respect to ThyNVM.
+
+Questions/Issues for the authors to address in the rebuttal/revision
+--------------------------------------------------------------------
+Please address my comments regarding the main weaknesses of the work. 
+
+Please also explain how PPA differs from ThyNVM.
+
+Pre-rebuttal overall merit
+--------------------------
+4. Weak reject -- fair work with some flaws that are difficult to overlook.
+   Would prefer it doesn't appear in the program, but will not fight
+   strongly.
+
+Post-rebuttal overall merit
+---------------------------
+3. Weak accept -- solid paper with some deficiencies. May consider
+   including in the program.
+
+Would you like to champion this paper?
+--------------------------------------
+2. No
+
+Reviewer expertise
+------------------
+2. Knowledgeable: I used to work in this area and/or I try to keep up with
+   the literature but might not know the latest developments
+
+Reviewer confidence
+-------------------
+2. Medium confidence: I understand much of the paper but not all of it.
+
+
+
+Review #52E
+===========================================================================
+* Updated: Jul 14, 2023, 9:18:53 PM UTC
+
+Paper summary
+-------------
+This paper presents persistent processor architecture (PPA) that guarantees whole-system persistence with having only small hardware modifications. The additional design modification incurs an average of 2% run-time overhead and 0.0048% area cost.
+
+Replaying the store instruction that remain in a volatile state is needed in order to mitigate crash inconsistencies. Different from the previous region-level consistency where each region should ensure all its stores are persisted before the next region starts, PPA utilize sufficient physical registers in out-of-order cores to preserve store registers. PPA dynamically adjusts the region boundary when physical registers run out.  With the strategy, sufficiently long store-integrity regions can be defined and this helps to hide the store persistence latency.
+
+In the event of a power failure, PPA employs a just-in-time checkpoint mechanism that encompasses rename tables, the last committed program counter (PC), and the Committed Store Queue (CSQ). When power is restored, PPA initiates the recovery process by reinstating the processor state using the rename table and the last committed PC. Subsequently, PPA replays the stores stored in the CSQ.
+
+Main Strengths
+--------------
+- Using NVM in order to provide WSP is proposed. 
+- Hardware-based approach to achieving WSP is well justified.
+- Light design and delay overhead compared to the previous synchronous approach.
+
+Main Weaknesses
+---------------
+- The asynchronous write back may cause too much writes as it looks like write-through cache.
+- When applications use many physical registers due to the program characteristics, PPA may incur frequent region boundary activations.
+- Possibly, PPA introduces additional overhead at context switching.
+
+How easy it is to read and understand the paper?
+------------------------------------------------
+1. Very clear: I had no trouble understanding the work.
+
+Comments for authors
+--------------------
+- I enjoy reading the paper. The paper clearly presents the proposed idea with proper description, examples, and figures. I also like the evaluation part that contains various simulation configurations and sensitivity study.
+
+- It seems very crucial to provide a low overhead approach for WSP(Whole System Persistence) in modern computer system. The paper provides a good solution with a minimal hardware modification and non-volatile memory for WSP.  Using the renamed physical registers as the temporal storage for store integrity looks smart idea and can contributes to delay the new region boundary. However I have several questions based on what I understand. 
+
+- First, according to the following sentence in Sec. 3.2. "That is, once data being stored is merged into the L1 data cache, the L1 data cache controller immediately asynchronously writes back the resulting dirty cacheline to NVM in the background", PPA seems to work like write-through cache. If so, it may cause a lot more traffics than the region based synchronous method. Correct me if I misunderstand and please provide the exact working mechanism of the proposed asynchronous write back method.  If the asynchronous write back truly works like write through cache, it would cause many write operations and that would be a serious concern especially when non-volatile memory used.
+
+- I guess the physical registers which are owned by the committed store instructions but still active for PPA should be saved at the context switching. So, it might cause additional overhead at the context switching.  Is this true? If so, can you please describe any additional overhead caused by PPA for the context switching operation?
+
+- Is there any application which causes more frequent new region boundary due to the physical register usage is heavy? I see that the average number of free physical register is high as presented in Figure 5. How did you get the data? If so, why the commercial CPUs are designed with wasting those registers?
+
+Questions/Issues for the authors to address in the rebuttal/revision
+--------------------------------------------------------------------
+- PPA seems to work like write-through cache. If so, it may cause a lot more traffics than the region based synchronous method. If not, provide the exact working mechanism of the proposed asynchronous write back method.
+- Is there any possibility to have applications which require many physical registers and frequently causes a new region boundary due to frequent full use of physical registers?
+- Is there any additional overhead introduced to restore more registers at context switching?
+- In the modern CPUs, why such a large portion of physical registers are underutilized?
+
+Pre-rebuttal overall merit
+--------------------------
+3. Weak accept -- solid paper with some deficiencies. May consider
+   including in the program.
+
+Post-rebuttal overall merit
+---------------------------
+3. Weak accept -- solid paper with some deficiencies. May consider
+   including in the program.
+
+Would you like to champion this paper?
+--------------------------------------
+2. No
+
+Reviewer expertise
+------------------
+2. Knowledgeable: I used to work in this area and/or I try to keep up with
+   the literature but might not know the latest developments
+
+Reviewer confidence
+-------------------
+2. Medium confidence: I understand much of the paper but not all of it.
+
+
+
+Rebuttal Response by Author [Jianping Zeng <zeng207@purdue.edu>] (1409 words)
+---------------------------------------------------------------------------
+We appreciate reviewers' thoroughness. Please see our revision in red text.
+
+### Q1-Reviewer-C,D: Why WSP in PMEM's memory mode? 
+That is because PSP (app-direct mode) is inferior to WSP for 2 reasons: high
+performance overhead and excessive cognitive burden. (1) App-direct mode cannot
+take advantage of deep cache hierarchy despite the ever-increasing data
+footprint of PSP applications. As shown in Figure 11, even an ideal PSP design
+is way (up to 2.4x and 1.29x on average) slower than PPA for memory-intensive
+applications---since PPA can exploit DRAM as a cache to accommodate
+the large footprint.  (2) PSP is not transparent and requires high programming
+complexity.  Users either redesign their data structures with persistence and
+recoverability in mind or leverage transactions to mitigate the programming
+burden at the cost of performance. Either way, the resulting performance
+overhead is so significant that PSP cannot be used for those who expect similar
+performance to that of running their applications in PMEM's memory mode. 
+
+Note that not only does WSP eliminate the cognitive burden of error-prone
+persistent programming, but it also makes the persistent applications faster
+with DRAM cache! Of course, for those using the memory mode to leverage the deep
+cache hierarchy, PPA offers them persistency and crash consistency without
+hurting the transparency and the performance.  This is particularly beneficial
+to HPC applications (e.g., mini-apps in Figure 11) whose states must be saved to
+storage on a regular basis. We believe PPA's lightweight
+persistence/recoverability can enable high-performance application-level
+resilience---related to one of the nation's Exascale challenges---by obviating
+the need for the periodic global checkpointing to storage. Given HPC systems
+already spend a considerable amount of time for the checkpointing, PPA expects
+to improve the performance of all HPC applications.
+
+### Q2-Reviewer-C: Narrow focus?
+No. PPA can accelerate not just PSP applications but also all HPC applications
+(see Q1).
+
+### Q3-reviewer-C: Wrong/misinformed claim in Introduction.
+While we know that the lack of persistence in Optane's memory mode is by design,
+the Introduction states what users desire and computer architecture pursues in
+general. We believe even Intel---and PMEM vendors like Samsung (memory-semantic
+SSD), SK Hynix (MRAM) and Fujitsu (FRAM)---would appreciate PPA. That is because
+apart from WSP benefits, PPA can accelerate PSP applications too by bringing
+DRAM cache to persistent domain on the cheap, without Intel's costly eADR that
+doesn't work for DRAM cache. 
+ 
+### Q4-Reviewer-A,C,E: Why underutilized PRF while large PRF in real processors?
+PRF's utilization is determined by the number of instructions with
+definition in ROB. According to our experiment, only
+30% of instructions define new registers, leading to 30% of PRF occupancy
+on average. That being said, microarchitects must consider the pathological
+cases---e.g., SPEC2006's libquantum has a lot of long-lived definitions---to
+avoid the bottleneck at the register renaming stage for peak performance [28]. 
+
+AFAWK, the large PRF of recent processors is driven by their ROB size increase
+for hiding memory latency. This implies that the phenomenon of PRF
+underutilization would still be observed unless program's arithmetic intensity
+and memory boundness are somehow balanced to keep PRF fully utilized---which is
+hard due to the pervasive instruction dependencies.
+
+
+### Q5-Reviewer-C: PRF pressure and its rigorous evaluation?
+Practically, there's no pressure---since we opportunistically hold the registers
+of PRF that is underutilized most of the time. Our revision rigorously evaluates
+both the PRF underutilization (Figure 5/6) and the pressure (Figure 13). As
+shown in Figure 13, PPA causes a negligible (0.07%) increase of the pipeline
+stalls that occur at the rename stage due to the lack of free registers.
+
+
+### Q6-Reviewer-C: Persistence demands knowledge of software.
+True for PSP, but the beauty of WSP is that it can offer persistence
+transparently with neither such knowledge nor error-prone persistent
+programming, which would otherwise users are burdened by the program development
+and the risk of crash consistency bugs. More importantly, as mentioned in our
+answer to Q1, PPA significantly improves the performance of persistent
+applications compared to running them in app-direct mode.
+
+
+### Q7-Reviewer-C: The idea is not needed in the presence of eADR.
+No, eADR cannot achieve WSP due to the inability to persist registers and
+DRAM-cache upon power failure. 
+
+
+### Q8-Reviewer-C: Extremely high overhead of persisting every store?
+Unlike persist barriers that place PMEM writes on the critical path and thus
+incur high overheads (5x slowdown; see Figure 1), PPA perfectly hides the
+persistence latency of stores by overlapping it with the execution of other
+following instructions, which is confirmed by Figure 12 in our revision.
+
+
+### Q9-Reviewer-A,D: Reason for no L3-cache evaluation? 
+That's because prior works [4,47] use 2-level hierarchy. The revision evaluates
+L3 cache;  as shown in Figure 15, PPA incurs an average of 1% overhead when
+using L3-cache atop DRAM-cache.
+
+
+### Q10-Reviewer-D: PPA's implications on cache coherence?
+Our empirical analysis in the revision (Figure 20) shows that PPA has an
+insignificant performance impact, e.g., 6% overhead when 64 threads are used,
+because of minimal stall cycles at synchronization primitives treated as region
+boundaries (See Figure 13).
+
+
+### Q11-Reviewer-A: Comparison to the 32GB-DRAM system?
+We evaluate PPA and PMEM's memory mode against this new baseline. Figure 10 shows
+that their performance overheads are 16% and 14%, respectively. 
+
+
+### Q12-Reviewer-B: Dual power sources?
+No. PPA's tiny capacitor shares the same power line with the existing power
+supply, i.e., the capacitor charges from the system's DC power supply and
+starts to power the system when the external power supply is cut off.
+
+
+### Q13-Reviewer-B: Hardware overhead of JIT checkpointing control block?
+Our RTL synthesis results highlights that the control block incurs a negligible
+hardware cost, i.e., 144 D flip-flops and 88 two-input logic gates (see
+Section-6.13).
+
+
+### Q14-Reviewer-B: Back-of-the-envelope calculations of JIT checkpointing energy consumption?
+No. We used the existing energy model created by empirical analysis on real
+systems with microbenchmarks (see Section-6.13). In addition, Table 4 in the
+revision also presents another energy consumption results based on a new model
+for a synthesized MIPS OoO core [NVP;HPCA'15] with a 45nm TSMC technology.
+According to the model, checkpointing 132 bytes of data from core to PCM
+requires 441.8nJ at worst case, and therefore checkpointing PPA's 1798.5 bytes
+of data costs 6.02$\mu$J. 
+
+
+### Q15-Reviewer-B: JIT-checkpointing time?
+PPA takes only 0.89 $\mu$s to flush all data to PMEM even considering the
+control logic processing time.
+
+
+### Q16-Reviewer-D: Difference from ThyNVM?
+Thank you for pointing us to the paper---cited in the revision. ThyNVM is for
+PSP and thus suffers from its drawbacks (see Q1) though they can be mitigated.
+ 
+### Q17-Reviewer-E: More traffic than the region-based synchronous method?
+Technically yes but practically it's not a big deal because PPA also performs
+intra-region coalescing (see Section 4.3 in the revision)
+
+
+### Q18-Reviewer-E: More overhead at context switching?
+No. PPA doesn't save proposed microarchitectural components at context-switching
+time, since they aren't visible to program as with physical registers. 
+
+
+### Q19-Reviewer-E: Any case of short regions?
+bzip2/h264ref/libquantum have more region boundaries---i.e., short regions---as
+shown in Figure 14 due to their heavy register usage.
+
+
+### Q20-Reviewer-A: Low PPA's overhead with a smaller PRF?
+We still observe the underutilization of a smaller PRF (80/80). Thus, PPA incurs
+low overheads for most applications---though it incurs high overhead (>30%) for
+others such as hmmer, lbm, lu-cg, tatp, and tpcc due to more stores in their
+program leading to shorter regions.
+
+
+### Q21-Reviewer-E: Like write-through?
+No. PPA persists stores to NVM in the background whereas the write-through cache
+brings the latency of writes on the critical path---since they cannot be
+committed until their data are persisted in NVM.
+
+
+### Q22-Reviewer-A,E: How to get the number of free physical registers?
+We measure the number of free physical registers every cycle at the renaming
+stage of the OoO pipeline and report the average.
+
+### Q23-Reviewer-C: Lack of rigorous sensitivity study with ReplayCache?
+No. Before paper submission, we discussed the region formation issue with
+ReplayCache's authors, and they recommended disabling the energy-aware region
+partitioning to maximize the performance of ReplayCache such that its region
+size is only limited by ARF size. 
+
+
+### Q24-Reviewer-A: Integrate SuperCap/Li-thin battery in SoC? 
+No. SuperCap/Li-thin battery is out of SoC as with Intel's ADR.
+
+
+### Q25-Reviewer-A. Are any applications multi-threaded?
+SPLASH3/Indexing/STAMP are multi-threaded program, as mentioned in Section-6.
+
+### Q26-Reviewer-A: Unclear Figure 10?
+Fixed; now it is Figure 12 in the revision.
+
+
+### Q27-Reviewer-A: Why is handling I/O operations different?
+They are usually irrevocable.
+
+
+### Q28-Reviewer-D: Write-through L1/L2?
+No. They are writeback as mentioned in Table 2.
+
+
+### Q29-Reviewer-A: CDF of PRF utilization?
+We show the CDF of free registers in Figure 5/6.
+
+
+### Q30-Reviewer-A: Does acknowledgment of completing store persistence already happen?
+Yes, that already exists in x86 processors as required by clwb.
+
+
+### Q31-Reviewer-A: Writing issues?
+We will fix it in the final copy.
+
+
+
+Comment @A1 by Reviewer A
+---------------------------------------------------------------------------
+We are happy to accept your submission subject to shepherding. 
+
+There was extensive discussion among the reviewers following the rebuttal and revision and the conclusion was that the following points should be better addressed in the final version:
+
+* Clearer positioning of the paper and more system-level context (related to WSP versus app-direct)
+* Additional microarchitectural details for the JIT checkpointing mechanism
+* Clarification / evaluation of overheads upon context switch
+* Clarification / evaluation of overheads with write-intensive code
+
+Your shepherd will be in touch with you with you to help define a detailed finalization plan and make sure that these points are sufficiently addressed in the final version.
+
+
+Comment @A2 by Shepherd
+---------------------------------------------------------------------------
+Dear Authors,
+
+Thank you for submitting your paper to MICRO'23 and congratulations for getting your paper conditionally accepted with shepherding.
+
+I will be shepherding your paper, and the first step in the shepherding process is to agree on a detailed plan that will address the various items. I am summarizing next the various items from the discussion along with some suggestions, but of course please feel free to provide your own suggestions for addressing the various items: 
+
+1) Clearer positioning of the paper and more system-level context (related to WSP versus app-direct)
+
+Some reviewers felt that there is a lack of context definition with respect to system persistency modes. In addition, the reviewers felt there is a lack of system-level implications for WSP. 
+A few suggestions for addressing this item could be:
+- a subsection in Section 2 that introduces WSP and motivates it for using it in server-class systems (because some works that are referenced in the paper are targeting energy-harvesting/intermittent computing systems, not server-class systems).
+- a subsection in Section 3 (probably at the end) that explains how PPA is integrated in the rest of the computing stack (application/runtime/OS) to enable application/system-level checkpointing. The response of the rebuttal's Q1 provides some relevant information and the relevant text could be based on the rebuttal response, extended with a bit more additional context and details.
+
+2) Additional microarchitectural details for the JIT checkpointing mechanism
+
+The reviewers would like to see more details (in terms of description, no evaluation required) regarding how the JIT checkpointing procedure works at the microarchitecture level.
+
+3) Clarification / evaluation of overheads upon context switch
+PPA seems to increase the time of context switch for the following reason: Since the physical registers held for the stores those are not yet properly persisted (that means they are still within the region boundary) will be overwritten by the switched-in context, they need to be stored backed with other architectural registers. The reviewers would like to see some discussion in the paper about this issue.
+
+4) Clarification / evaluation of overheads with write-intensive code
+Similarly the reviewers would like to see how PPA performs with write-intensive workloads (i.e., workloads that have lots of stores and put a lot of pressure on the physical registers). Perhaps the use of microbenchmarks could help here.
+
+Please send me a detailed plan (there is no concrete deadline at the moment, but the sooner the better) about how you intend to address the aforementioned items. Once we agree with the plan, you can start working on the new paper version.
+
+Please let me know if you need further clarifications regarding any of the aforementioned items.
+
+
+
+Shepherding Response by Author [Jianping Zeng <zeng207@purdue.edu>]
+---------------------------------------------------------------------------
+Dear Reviewers,
+
+Thank you so much for the detailed actionable plans! We would like to address these comments as follows.
+
+(1.1). We add a new section 2.2 to talk about the definition of WSP and its motivation as the answer to Q1 in the rebuttal.
+
+(1.2). We plan to add a new paragraph in the discussion section (Section 5) to describe how we integrate PPA with the existing computing stack, such as how to deal with system calls and exception handling.
+
+(2). We will integrate a JIT checkpointing control block into Figure 8 and detail how the control block saves PPA's hardware structures to NVM upon power failure in Section 4.5.
+
+(3). No. Context switching is not treated as a region boundary. PPA does not differentiate between user program and kernel code, i.e., all instructions are treated the same.  While keeping context switching as is, PPA guarantees correct process (de)scheduling/resumption, which is the beauty of WSP.  Suppose power failure occurs in the middle of context switching from process-A to process-B. PPA ensures that the architectural states of the descheduled process-A are crash-consistent by following PPA’s original checkpoint and recovery protocol. For example, at the moment of the failure, all of process-A's stores, committed but possibly unpersisted since the last region boundary, are JIT-checkpointed with the help of CSQ.  Since the context of process-A is not lost across the failure, it can be scheduled back and resumed correctly once process-B is done.  
+
+That being said, PPA might have an indirect impact on context switching performance, provided a region boundary ends up being introduced during the context switching. We believe that such a case rarely happens because PPA forms reasonably long regions, which keeps the frequency of encountering region boundaries low.  Even if the case occurs, i.e., register file runs out in the middle of the context switching and the resulting region boundary incurs the region-level persistence overhead, then PPA can still minimize the stall cycles at the boundary leveraging its asynchronous store persistence; as shown in Section 6.3, only few stall cycles are incurred on average. The upshot is that they are negligible compared to the typical context switching time (e.g., 5-20 us). Consequently, context switching performance would practically be the same under PPA. 
+
+We will include a new paragraph about this clarification in the discussion section (Section 5) of the final copy.  
+
+(4). We clarify in section 6.8 that PPA incurs up to >30% run-time overhead for write-intensive applications, such as hmmer, lbm, lu-cg, and tpcc, due to their heavy memory writes as the answer to the rebuttal's Q20.
+
+We have updated the answer to the third comment. Please let me know if you have any question.
+
+-------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------
+Dear Shepherd,
+
+We apologize for the late revision due to personal issues. Please see the red in the revision for how we address the 4 concerns raised by reviewers.
+
+Your sincerely!
+
+-------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------
+Thank you so much for the suggestions! We will fix them in the camera-ready version. If you don’t mind, would you please let the PC Chairs know that we already completed the shepherding since today is the deadline?
+
+Best,
+Authors of #52
+
+
+
+Comment @A3 by Shepherd
+---------------------------------------------------------------------------
+Thank you for your prompt reply. The suggested actions look good to me, except for point no  3 which is still unclear. I understand  that PPA does not need to save the state of the physical register file, and hence PPA does not affect directly the context switch latency  However, with PPA when a context switch occurs, this event is treated as a region end, and thus the in flight stores need to be persisted before the next process starts its execution. In this way, PPA affects context switching time indirectly. In general, a description of how context switches are handled with PPA seems to be necessary. Can you please clarify this aspect and explain why context switching time does or does not change with PPA?
+
+
+Comment @A4 by Shepherd
+---------------------------------------------------------------------------
+Thank you for clarifying further the concerns regarding the impact on context switching, and how PPA operates with respect to context switching. The reviewers think that it would be beneficial to include the aforementioned discussion in the paper. Can you please update your response clarifying in which part of the paper you could include such discussion?
+
+
+Comment @A5 by Shepherd
+---------------------------------------------------------------------------
+Thank you for addressing that point as well. 
+
+I think now the plan is complete and detailed, so you can proceed with its implementation and prepare the new paper version.
+
+Once you have the new paper version ready, please upload it in hotcrp, including  a letter of how you have eventually addressed the shepherding items. If for some reason you deviated from the 
+originally proposed plan, you will have to explain how and why. You can upload the new version along with the letter as an attachment to comment. 
+
+The shepherding deadline is Sep 4th, but it would be great if you can prepare it earlier so that we will have enough time to iterate if needed. 
+
+Please let me know if you have any questions.
+
+
+Comment @A6 by Shepherd
+---------------------------------------------------------------------------
+Dear authors,
+
+Thank you for submitting the revised version. The concerns have been addressed, and your paper has been unconditionally accepted. Congratulations!
+
+A couple of minor suggestions regarding the added text:
+- Section 2.2 states: "First, The app-direct..." This should be re-written as "First, the app-direct..."
+- Section 5 states: "due to the beauty of WSP" --> This actually depends on the writing style but perhaps it would be better to state this as "thanks to the WSP approach" or "thanks to the benefits of WSP".
+
+
+Comment @A7 by Shepherd
+---------------------------------------------------------------------------
+Dear Authors, 
+
+The PC Chairs have been also notified accordingly.
+
+Best regards

@@ -1,0 +1,338 @@
+PLDI 2020 Paper #859 Reviews and Comments
+===========================================================================
+Paper #859 Compiler-Directed Soft Error Resilience for Lightweight GPU
+Register File Protection
+
+
+Review #859A
+===========================================================================
+
+Overall merit
+-------------
+A. I will champion accepting this paper.
+
+Reviewer expertise
+------------------
+Z. Some familiarity
+
+Paper summary
+-------------
+Penny is a compiler-directed resilience scheme for protecting GPU register
+files against soft errors. By exploiting idempotent region recovery, Penny
+offers equal or better resilience compared to standard ECC hardware with
+4.2% average overhead.
+
+Comments for author
+-------------------
+This paper tackles the problem of detecting and recovering from soft errors in
+GPU register files. In particular, the paper solves a number of technical
+problems to enable low-overhead idempotent region recovery on GPUs through
+compiler-only techniques (no additional hardware changes are necessary).
+
+Strengths: I found this to be a very interesting paper: well-motivated,
+generally clear explanation and strong results. The use of compiler techniques
+to squeeze out more from hardware (such as extra resilience) feels very much in
+the spirit of PLDI. The application of Konig's theorem to checkpoint placement
+was cool!
+
+Weaknesses: One aspect that the performance evaluation does not cover is the
+performance *in the presence of errors requiring recovery*. In this case, I
+would imagine that recovery with ECC hardware is an insignificant runtime cost.
+Whereas, Penny must incur some cost to execute recovery blocks/rollback state.
+The 4.2% overhead is the cost assuming no errors/recovery---is that right?
+Clarifying this issue would make Sec 6 even stronger.
+
+Additional feedback/questions:
+  - Is the observation in Sec 4.1 novel and applicable beyond GPUs? If so, then
+    I think this is a larger contribution than the paper makes out!
+  - Could you comment on the extent to which the register file is the most
+    important structure to protect against soft errors? What about the
+    datapath? Would it be possible to run idempotent regions multiple times and
+    compare results to ensure bit-precise matching?
+  - Transactional memory superficially sounds like a possible solution to the
+    checkpoint overwriting problem. Could you comment on whether this is the
+    case?
+  - How does Penny work in the presence of atomics such as an atomic-increment
+    to a memory location, where the anti-dependence does not travel across a
+    register?
+  - Finally, doesn't Penny require at least some hardware change to allow
+    detected soft error to signal the recovery mechanism?
+
+Minor:
+  - Fig 1, 4 and 5 switch between using cp and ckpt for the checkpoint
+    instruction. Make this uniform.
+  - Sec 4. many of the figure references seem to be out-by-one
+  - Sec 4.2. The para 'Preventing checkpoint overwriting' is repeated
+  - Typos: Line 89 corrputed -> corrupted, Line 125 allocatie -> allocate, Line
+    1188 ignoble -> negligible? In fact, there seem to be a number of small
+    typos that could be picked up easily by a thorough spellcheck.
+
+
+
+Review #859B
+===========================================================================
+
+Overall merit
+-------------
+A. I will champion accepting this paper.
+
+Reviewer expertise
+------------------
+X. Expert
+
+Paper summary
+-------------
+This paper presents Penny, a compiler-directed approach to recover
+from soft errors impacting registers in GPUs. The work is based on the
+insight that soft error detection is much cheaper than
+correction. Therefore, the paper combines hardware soft error
+detection to recover from detected errors using idempotent compilation
+and micro-checkpoints. The paper identifies and addresses several
+challenges is adapting existing CPU techniques (specifically Bolt) to
+the GPU. Performance evaluation using 25 benchmarks demonstrates low
+runtime overhead ($~4.2\%$).
+
+Comments for author
+-------------------
+This paper solves an important problem impacting both application
+users and informing hardware design points for future GPUs.  Modern
+GPUs include large register files to enable highly concurrent
+execution. ECC protection for these register files can be particularly
+expensive (as shown in Table 1 in the figure), especially as one considers
+the opportunity cost of the lost chip space and potentially increase
+in access latency (ECC computation is in the critical path of register
+operations, shown in Tables 1 and 3).
+
+**Writing quality**
+
+While these are fixable, I wanted to comment on the writing quality
+first. The initial sections are mostly well-written and present convincing
+arguments. But it deteriorates as I work through the section.
+Subsequent sections have numerous errors. Just to list a few:
+
+* Line 420 is missing a reference. I believe this caused all following
+Figure/Table references to off by one. For example, in line 493 "Figure 5(a)"
+should be "Figure 4(a)".
+
+* Lines 428--436 repeats the text in the preceding paragraph.
+
+* There are several typos and grammatical errors ("fine-ture" (line
+629), "cheep" (line 591), "each checkpoints" (line 710), "theose"
+(972), "ignoble" (1188) ...). This gets much worse as we get to the
+evaluation section.
+
+* Sections 5.4 and 5.5 seem more complicated that they need to be. The
+rest of the paper does not an excellent job of supporting the text
+with figures. This section could be better presented with figures and
+an algorithm. 
+
+* Spacing in some of the figures is very tight (Tables 2-3, Figures
+8-14). Figure 10 has over 150 bars in a half-page width bar graph! I
+could barely see the geometric mean bars.
+
+* What is the unit for Figure 13 y-axis?
+
+** Key Contributions **
+
+While the paper is extending an optimizing CPU algorithm for soft
+error recovery, it makes several key contributions.
+
+* Tuning the placement of micro-checkpoints
+
+* Improved algorithm for checkpoint pruning
+
+* Choosing between shared and global memory for checkpoint placement
+
+* Several other optimizations
+
+These optimizations account for the unique characteristics of GPUs
+(e.g., lack of store buffers).
+
+Can you clarify if the low-level optimizations presented in Section
+5.7 are new?
+
+A key advancement of Penny as compared to prior work is the idea that
+soft errors need not be detected with a region, relaxing the
+checkpointing requirements. The idea is that such "escaping" errors
+will result in a parity check failure whenever the erroneous value is
+accessed. Exploiting this feature requires further changes to Bolt's
+algorithm. 
+
+However, the correctness of this approach is left in the
+Appendix. Including a summary of the proof in the paper would
+strengthen the contribution. In addition, I would have liked to see
+the benefits obtained from relaxing the in-region detection
+requirement. Without this, the paper is not self-contained and I am not sure the paper can claim this as a contribution.
+
+** Empirical evaluation **
+
+Extensive evaluation using 25 benchmarks clearly demonstrates the
+benefits of the overall approach. 
+
+The benefits of the individual optimizations are clearly demonstrated
+in the empirical evaluation.
+
+While the baseline overhead of $~30\%$ might seem small, requiring
+uses to pay that overhead is a significant barrier to adoption of such
+techniques to deal with typically rare soft errors. The low runtime
+overheads, together with the demonstration of the potential hardware
+benefits using the Synopsis design compiler (Table 3) make a strong
+case for using this approach in production hardware.
+
+Post author-response comments
+-----------------------------
+The response significantly helped make the case for the paper.
+
+The authors are committed to resolving the writing issues, which is a common weakness identified by the reviews. Specifically, it is critical that the authors address the writing, and the author response needs to be incorporated into the paper. 
+
+The response did not directly address the question about what hardware must be present (the hardware must at least be able to do a RF parity checks?), although it does say in their response that Penny can use "commodity hardware." It would be good if they could clarify this point. 
+
+There were questions about energy consumption argument and inconsistent messaging. 
+There was a sense that the evaluation is only well-grounded if they report full-GPU energy consumption.
+
+There was a concern that the paper is marketed as if it's a strict win when it is likely instead a tradeoff. That means the final motivation they provide needs to rely much more heavily on the speculative benefits that they claim in the response.
+
+Perhaps this clarification can be simply accomplished by noting in the paper that total energy consumption may increase and therefore additional exploration in the design space may be necessary to fully realize results. For example, this sentence in their conclusion ("Given the huge GPU register file (RF) size") seems in conflict with their admission that RF energy consumption is small.
+
+
+
+Review #859C
+===========================================================================
+
+Overall merit
+-------------
+C. I would not accept this paper but will not argue strongly against
+   accepting it.
+
+Reviewer expertise
+------------------
+Y. Knowledgeable
+
+Paper summary
+-------------
+The paper provides ECC-free RF protection for soft faults for GPUs. The technique is based on idempotent execution, which means that the technique need to only be supported by an error detector. Error correction is then supported by replay.  The implementation itself deals with the subtleties of GPU (micro)architecture, balancing register pressure/SRAM/DRAM memory allocation concerns for the best performance. It also includes an approach for checkpoint pruning. The results are low-overhead protection for the GPU (4.2%).
+
+Comments for author
+-------------------
+#### Strengths
+  - Reliability is important.
+  - Yields performance improvements over a naively extended Bolt.
+  - Clear technique. Register renaming (from existing work) and then storage alternation.
+  - Clear optimizations. Checkpoint pruning orders potential checkpoint decision configurations monotonically, meaning that the first valid decision is optimal.
+
+#### Weaknesses
+   - Value proposition is unclear.
+   - Writing needs improvement. Currently harms clarify of paper.
+
+#### Questions
+
+- L973: How many registers require storage alternation? 
+
+- L1066: Why can't iGPU also be adapted to use only EDC? It would be great to get more detail on iGPU and its potential for repurposing because its inclusion suggests an alternative methodology.
+
+- L1097: Figure 8/9? Several benchmarks report speedups over the baseline, normal program (e.g., MD., SARD). Why does this happen? This is unexpected for this scenario where resilience typically adds overhead. Are new optimizations opportunities made available after transforming the program? Are there optimizations that aren't applied to the original program? This unusual enough to warrant discussion in the paper.
+
+#### Comments
+
+This paper's main goal -- reliability for increasingly less reliable hardware -- is an important and noble goal. If the software community can provide better reslience mechanisms, then  hardware designers can be more aggressive in the pursuit of better performance.
+
+Having said that, I found this paper to be tricky to dissect. In particular, the value proposition of this work is not clear. The nominal goal here is ECC-free RF error resilience for the GPU. As a solution, this technique achieves that goal. However, the value of the result within the goal's context is not clear from the evidence in the paper.
+
+Specifically, there are two main proposed benefits: 1) reduce energy consumption to achieve error resilience by using a less expensive EDC/ECC scheme and 2) improved error resilience for the same EDC/ECC scheme by leveraging replay for correction, versus auxiliary bits. 
+
+My concern on the first benefit is that it is unclear if there are reasonable energy consumption savings here when it comes to chip-level or system-level energy consumption. RF energy consumption is typically small versus full chip alone (I'd be happy to hear otherwise). So the increased overhead of the approach may cause more total energy consumption versus than just simply using ECC on the RF. The evaluation in 6.8 does not make this clear as it only measures RF energy consumption (to the best of my reading).
+
+My concern on the second benefit is that multibit errors in excess of two bits are -- to my understanding -- quite rare. This claim should be supported by data. I'd be happy to data to the otherwise. 
+
+Overall, this is a good piece of work. The elaboration is very sensible. I sense partly because there is significant related work. However, it does require a high level of technical execution.  What holds me back from a higher score is that the paper does not put the full benefit of the result in context. For example, it would show modest full-system energy savings.
+
+#### Suggestions
+ 
+- Figure numbers seem to be incorrect at multiple locations (e.g., L492).  
+
+- The subfigures of Figure 4 should be reordered to match the sequence of the discussion: a) example, b) register renaming, b) storage alternation.
+
+- Consider if the checkpoint pruning results could become the center of the contribution, therefore inheriting Bolt's motivational context (versus ECC-free RF).
+
+
+
+Review #859D
+===========================================================================
+* Updated: Feb 8, 2020, 10:28:06 AM AoE
+
+Overall merit
+-------------
+B. I support accepting this paper but will not champion it.
+
+Reviewer expertise
+------------------
+Y. Knowledgeable
+
+Paper summary
+-------------
+This paper describes Penny, a set of compiler transformations for adding or augmenting error-correction capability to GPU register files (RF).  For GPUs with no hardware ECC circuitry, Penny adds equivalent error-correction capability without incurring the power and area costs of ECC hardware; the tradeoff is a small amount of overhead.  For GPUs that already have ECC, Penny can augment their capabilities to achieve higher levels of bit-resilience.  Penny's mechanism depends on strategically placing register checkpoints and storing checkpointed values in one of two high-performance shared memory regions on the GPU.  The detailed evaluation shows that, on average, Penny's overhead is low compared to the baseline as well as techniques that either use pure register renaming or an existing tool (Bolt) originally designed for CPUs.
+
+Comments for author
+-------------------
+This paper's main contribution--- that a checkpointing mechanism can be built that both detects and restores corrupted register files with little overhead and without the need for expensive hardware--- is clearly a novel one.  Furthermore, the implementation of the checkpointing mechanism has great technical depth: the technique requires special versions of a large number of compiler transformations, some of which (like checkpoint cost estimation, placement, and pruning) also appear to be novel.  I am quite impressed by the sheer amount of work that went into this paper, and I would like to see it appear somewhere.
+
+Unfortunately, there are three big problems that give me pause about this paper.  To be clear, although I am assigning this paper a C, I really am on the fence about this one, and I could be convinced to change my score to a B.  The primary issue is that I found several important sections of the paper to be unintelligible; namely, the descriptions of the analyses in section 5.4.1.  The authors provide very little intuition as to the functioning of the formalisms described.  Some of this might be addressed by the figures, however, tragically, nearly all of the figures appear to be misnumbered.  This is sufficiently bad that I am not even certain whether the figures referred to in 5.4.1 (e.g., Figures 4(a) and 4(b)) are actually in the paper at all--- the text does not seem to correspond with either Figures 4 or 5.
+
+The second important issue is that the writing needs significant improvement.  Spelling and grammatical errors are numerous.  In some places, these mistakes are more than annoying---they're confusing---and I am not at all certain what the authors are trying to communicate.  The section worst hit by this problem is the evaluation itself, which appears to have been written hastily.
+
+The third important issue regards the overall setup and structure of the evaluation.  What are the actual research questions?  The paper does not say.  Clearly, performance is going to be the most important criterion: Penny needs to be as close to the speed of an ECC-protected CPU as possible.  I think that most of the plots adequately convey this, however, there is very little discussion pertaining to the goals of the research or discussion/high-level takeaways from the results.  The importance of another section, since it relates to claims about power and area, is also _mostly_ self-evident.  However, as a PL researcher and not a computer architect, the significance of the text that discusses tools like Synopsys, CACTI, and Lattice are lost on me.  Furthermore, the baseline area, latency, access energy, and leakage power are described, but the paper does not explain the meaning of these measurements.  One thing that was not evident to me until I read this section was that Penny itself could not be used to replace ECC on a GPU with NO special hardware: a Penny-augmented GPU needs at least EDC hardware, correct?  Otherwise, why would Penny have any hardware overhead?  Does it matter that all of these results were simulated?  I don't know.  Unfortunately, I think this is a major downside of this work.
+
+The significance of other sections, like the per-optimization performance benchmarks, checkpoint pruning performance, and Volta architecure benchmarks are lost on me.  What story is the paper trying to tell with these sections?  Why does one need a special Volta section?  Are GPU architectures so volatile from one hardware revision to the next that it might invalidate all of the work done in this paper?  For me, the absence of an explanation cast more uncertainty than certainty on my appraisal of this work.
+
+Although the paper alludes to the mechanisms that invoke error correction, they are not discussed in this paper at all.  I think that it is OK that specific error coding schemes themselves are not described (e.g., parity, Hamming, SECDED, DECTED, etc.) since some schemes are well-known and citations are provided for the others.  But I would have liked to have heard a description of how the GPU would detect an error (especially since it appears to require at least hardware support for parity checks) all the way through how the value is actually restored, and that mechanism's effect on performance.  In fact, the benchmarks do not describe the performance impact of correcting an error at all.  What is the latency of hardware error _correction_ when an error occurs?  Penny must replay an entire idempotent block, which _must_ be more costly than ECC, and the relationship between the number of soft errors and latency for Penny is not investigated at all.  Therefore, the benchmarks just describe the use of Penny **when no errors occur**.  Given that, some description of the likelihood of such errors is important in order to believe the claim (which my gut tells me is probably true) put forth by the authors that the power and area savings promised by Penny are worth the tooling effort.  The ECC-augmentation aspect is also quite cool, but again, how precisely such a scheme would work is completely omitted from the paper.
+
+Lastly, the provenance of the benchmarks is not described.  Describing the benchmarks and their representativeness is quite important for reviewers to decide whether these results generalize.  Although the paper provides a table in section 6.2, it does not explain why other benchmarks from those same suites were omitted.  Is it because the other benchmarks are uninteresting or because Penny does not work with them?
+
+I would like to reiterate the importance of discussing the benchmarks.  One reason is that I think the paper is actually underselling Penny's performance.  For example, looking carefully at (what is labeled as) Figure 8, Penny is faster than Kruijf in 4 cases, as fast in 5, and slower (but still faster than Bolt) in 13.  It ALSO appears to be equal to or faster than the baseline in 8, which is awesome.  However, none of this was discussed in the paper.
+
+Other issues:
+
+* The figures are TINY!  Please make them bigger.
+* Most of figure references are mislabeled.
+* binomialOptions is mentioned on page 2 without explaining where that program comes from.
+* There are numerous spelling and grammar mistakes (I eventually tired of keeping track of them).
+* The paragraph "Preventing checkpoint overwriting" on page 4 is duplicated twice.
+* An example would be very helpful for understanding the description of live range extension that starts on line 509.
+* The mention of pruning on line 556 should forward-reference the pruning algorithm in 5.4.
+* I don't understand what the paragraph that starts on line 700 is trying to tell me.
+* I don't understand what is meant by "finalization."  The first sentence that mentions "finalization" in any context is ungrammatical and confusing to me.  Again, an example would be tremendously helpful.
+* I don't understand the significance of the paragraph that starts on line 1001.  What is the "PTX instruction"?
+* Many performance charts are truncated at the top.  It's fine to do this if one or two bars extend beyond the top of the chart, but in this paper's case, they are egregious.  Again, I think this undersells the work, since we can't see how much smaller Penny is.
+
+
+
+Response by HongJune Kim <hongjune@aces.snu.ac.kr> (Author) (700 words)
+---------------------------------------------------------------------------
+We appreciate the reviewer's thoroughness and promise to resolve all the writing issues in the final copy.
+
+### Value proposition (C)
+Before addressing the concern about energy/resilience benefits, we highlight Penny's low hardware area cost due to the lack of ECC. Penny enables low-end GPUs (e.g., in self-driving cars) to protect RFs without increasing the die size. Also, by re-purposing the unused ECC space, Penny makes it possible to enlarge high-end GPUs' cache/RF, thereby improving the performance and eventually energy-efficiency.
+
+### RF energy (C)
+Despite RF's portion in the total energy consumption is small, it is indeed important to reduce the RF energy. That is because RF determines GPU's nominal voltage (Vdd), which must be set high enough to handle the worse-case voltage demand [Leng-ISCA15]. In fact, RF's burst accesses originated by GPU's massive parallelism often cause large voltage swings in the power delivery, which must be guarded by sufficiently-high Vdd. If Penny is used to reduce the RF energy, GPU architect can lower the operating voltage to improve the entire GPU's energy-efficiency.
+
+### Multi-bit errors (C)
+Multi-bit errors are occasionally reported in commodity GPUs (28nm/12nm) of supercomputers/datacenters. Nevertheless, technology scaling increases the chance of multi-bit errors significantly. Given that AMD’s new Vega GPU is built using 7nm technology, multi-bit error correction is likely to be used in future generations of GPUs. Finally, with near-threshold voltage, which is a key technology for realizing Exascale supercomputers, researchers already observed 2.6x more multi-bit errors. Penny's low-cost multi-bit error correction is essential for such aggressive voltage scaling which dramatically improves the energy-efficiency.
+
+### Error-handling (A,D)
+Penny uses Bolt's recovery model. When an error is detected, the exception is thrown and caught by the handler, which is also possible in commodity GPUs. Penny's exception handler (1) reads PC (program counter) pointing to the position of the idempotent region where the exception is thrown, (2) finds the recovery block corresponding to the region, (3) executes the recovery block that restores live-in registers of the region by running recovery slice or reading from checkpoint storage, and (4) jumps back to the beginning of the region.
+
+### 4.2% overhead; recovery cost (A,D)
+4.2% is the fault-free run-time overhead. Given that soft errors rarely occur (1/day in 16nm [Dehnert-CGO03;Quingrui-SC16]), so the impact of the recovery procedure on the total execution time is negligible.  With optimal checkpoint pruning, Penny effectively shifts the run-time overhead of fault-free execution to that of fault-recovery execution for lightweight RF protection, which is critical for the adoption of Penny (see reviewer#B's last paragraph).
+
+### Benefit of relaxing in-region detection (B)
+To the best of our knowledge, DMR (dual-modulo-redundancy a.k.a instruction replication) is the only software-based error detection mechanism that can work for the in-region detection requirement.  However, DMR incurs unacceptable performance degradation not only because of the instruction count increase but also because of the comparison of original instructions and their replicas that must be done before the end of every idempotent region. The upshot is that by relaxing in-region detection, Penny achieves low-cost resilience with parity/EDC mechanisms.
+
+### Out-of-region detection beyond GPUs (A)
+Penny's EDC-based protection is applicable to CPUs and other processors (e.g., Xeon Phi). We also think this can be claimed as another contribution. Thanks!
+
+### RF/datapath resilience; repeated execution of idempotent regions (A)
+No matter which instruction is executed, RF is accessed. This implies that RF is on the critical path, so its error is likely to affect the program output. In contrast, a large portion of datapath errors can be masked [Wang-TDSC06]---though it's still important. Note that Penny can be easily integrated with existing datapath protection mechanisms, and we believe---as the reviewer proposed---multiple re-execution of the idempotent region is one way to detect and resolve datapath errors. Thanks!
+
+### Atomic updates (A)
+A general idempotent solution would have to replace the in-place update instruction with separate load and store. However, since this is inefficient, Penny isolates each atomic instruction as a separate region. If a register operand of the instruction is corrupted, the error is detected at the register access by parity. Then, the recovery mechanism will restore the register from its checkpoint before writing updating the memory. With this, the atomic update to the memory is guaranteed not to happen more than once before the region ends.
