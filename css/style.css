@@ -15,6 +15,7 @@ body {
 li { 
   margin-left: 1em;
   font-size: 16pt;
+  list-style-position:outside;
 }
 
 
