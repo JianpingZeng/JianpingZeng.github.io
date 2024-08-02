@@ -33,7 +33,12 @@ ol {
 
 strong {
 	font-weight: bold;
-	font-size: 17pt;
+	font-size: 16pt;
+	color: Black;
+}
+
+code {
+	font-size: 14pt;
 	color: Black;
 }
 
