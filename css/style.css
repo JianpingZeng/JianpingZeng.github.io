@@ -8,13 +8,13 @@ body {
 	#font-family: Gill Sans,Gill Sans MT,Calibri,sans-serif; 
   #font-family: Calibri, Verdana, Helvetica, Arial;
   background-color: White;
-  font-size: 16pt;
+  font-size: 14pt;
 }
 
 
 li { 
   margin-left: 0em;
-  font-size: 16pt;
+  font-size: 14pt;
   list-style-position: inside;
 }
 
@@ -33,17 +33,17 @@ ol {
 
 strong {
 	font-weight: bold;
-	font-size: 16pt;
-	color: Black;
-}
-
-code {
 	font-size: 14pt;
 	color: Black;
 }
 
+code {
+	font-size: 12pt;
+	color: Black;
+}
+
 h3 {
-font-size: 16pt;
+font-size: 14pt;
 font-weight: bold;
 padding-top: 1em;
 color: Black;
@@ -57,7 +57,7 @@ color: Black;
 }
 
 h1 {
-font-size: 16pt;
+font-size: 14pt;
 font-weight: bold;
 color: Black
 }
@@ -67,7 +67,7 @@ padding-bottom: .5em;
 }
 
 title {
-font-size: 16pt;
+font-size: 14pt;
 font-weight: bold;
 color: Blue
 }
@@ -79,7 +79,8 @@ margin-bottom: 13px;
 }
 
 a, a:visited, a:hover, a:active {
-color: Blue
+color: Blue;
+text-decoration: none;
 }
 
 #container {
