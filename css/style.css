@@ -84,8 +84,8 @@ text-decoration: none;
 }
 
 #container {
-/*position: absolute;
-left: 25%;
+position: absolute;
+left: 28%;
 right: 15%;
 top: 0px;
 margin-top: 5px;
@@ -97,7 +97,6 @@ border-left: 2px solid Black;
 border-right: 2px solid Black;
 border-top: 2px solid Black;
 border-bottom: 2px solid Black;
-*/
 }
 
 #content {
