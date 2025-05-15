@@ -1,0 +1,168 @@
+ISCA 2025 Paper #323 Reviews and Comments
+===========================================================================
+Paper #323 Rethinking Prefetching for Intermittent Computing
+
+
+Review #323A
+===========================================================================
+* Updated: Feb 28, 2025
+
+Pre-Response Overall merit
+--------------------------
+A. Good paper, and I will champion it. (Does not have to be perfect!)
+
+Confidence
+----------
+X. I am an expert in this area; I've written recent paper(s) in the area
+
+Paper summary (brief)
+---------------------
+The paper proposes the Intermittent-aware Prefetching Extension (IPEX) which automatically adapts the aggressiveness of any prefetcher to the amount of energy that is currently available to an energy-harvesting-based computing system. In these systems, computation occurs in response to energy becoming available, and prefetching data items that are never used therefore consumes energy that should have been used to achieve forward progress in application execution.
+
+Why should this paper be in the program?
+----------------------------------------
+IPEX is a simple, low-overhead scheme that gets the job done. The evaluation is comprehensive and contains a rich collection of sensitivity analyses. The paper is well-written and easy to read.
+
+Comments for authors
+--------------------
+While the authors have convinced me that IPEX is needed if you want to enable prefetching in an energy-harvesting-based system, I am still not convinced that prefetching is attractive in these systems.
+
+Fundamentally, energy-harvesting-based systems are energy-limited and prefetching will even in the best case (with perfect accuracy) consume more energy than simply fetching data on demand. More specifically, the energy of fetching the required data will be (roughly) the same for a demand fetch and a prefetch but the prefetching configuration incurs the energy overhead of running the prefetcher. (I assume that the cache is not aggressively power-gated, i.e., buffering the prefetched data until it is used does not add additional energy overhead.)
+
+Prefetching can hence improve performance in the short term, but it does so by consuming more energy than a no-prefetcher configuration. In the longer term, this "overconsumption" will likely result in the prefetching-enabled system having performed less work than the no-prefetch configuration -- because it wastes (some) energy on bad prefetches that the no-prefetch configuration will use on executing the application. I don't know how significant this effect will be, but it must be analyzed for the paper to be accepted.   
+
+I also have some less important questions:
+* In Section 5, you state that IPEX can reissue prefetches that were throttled earlier. Don't we then run the risk of these prefetches being issued too late to be useful?
+* When using the throttling rate heuristic, why is it favorable to make the increase/decrease decision based on the throttling rate being larger/smaller than 5%? Also, why are the voltage thresholds adjusted by 0.05V? I would appreciate to see a sensitivity analysis on these parameters.   
+* When discussing power traces in Section 7.9.8, the text states that IPEX should yield lower benefits for thermal/solar (which makes sense to me) but the plot shows that the speedup hardly changes. Please explain.
+
+**Post-revision update**
+
+Thank you for addressing my concerns!
+
+Questions for Rebuttal/Revision
+-------------------------------
+1. How do you ensure the amount of energy supplied to the system is constant when comparing different configurations?
+
+2. How do the prefetching-enabled configurations compare to a configuration without prefetching in terms of performance and energy consumption? When performing such a comparison, it is critical that both configurations are provided with the same amount of energy.
+
+
+
+Review #323B
+===========================================================================
+* Updated: Mar 5, 2025
+
+Pre-Response Overall merit
+--------------------------
+C. Weak paper, though I will not fight strongly against it
+
+Confidence
+----------
+Y. I am knowledgeable in this area, but not an expert
+
+Paper summary (brief)
+---------------------
+The authors explore dynamic prefetching throttling in EH systems, linked to future energy emergency confidence via capacitor voltage monitoring. Improvements in performance from prefetching are noted to reduce leakage and the authors show that, with power-failure aware throttling, these gains exceed the energy costs of incorrect speculation.
+
+Why should this paper be in the program?
+----------------------------------------
+Prefetching for energy harvesting systems has not been as heavily explored as it has been in non-intermittent systems. Adapting dynamic prefetch throttling for available energy, rather than bandwidth and/or capacity, yields slightly different insights and mechanisms. The authors provide a range of sensitivity studies to nicely contextualize the presented insights and sources of benefit.
+
+Comments for authors
+--------------------
+EH systems are getting an increasing amount of attention for how/when performance-oriented optimizations can improve forward progress, and this a very reasonable angle to tackle. The tradeoff between leakage and incorrect prefetch losses (ignoring, for the moment, power emergencies) has a very clean race-to-halt logic about it. Taking into account those power emergencies now brings in a more complicated version of timeliness in prefetching, but one that does have analogous relationships in the non-intermittent space: Consider optimizing for timeliness of prefetch in the presence of dynamic cache resizing, thread scheduling, or SMT cache sharing. In all these cases, an exogenous force may render an otherwise reasonable (in isolation) prefetch a bad energy bet, just as a power emergency does. Obviously, there are distinctions in temporal granularity and degree of control, but similar concerns arise; prefetching in these scenarios does not appear to be as heavily studied, and novelty is not the chief concern here.
+
+There are, however, concerns. Given the tangible, but somewhat modest, energy savings presented, I would have appreciated more modeling details about the technology, interconnect, etc. assumptions. How leakage-optimized are the transistors being used in the cache for the EH system? What are the specific interconnect assumptions for the NVM read? Given the choice of 3.3V technologies (i.e. COTS-level assumptions) how well can we expect the insights about prefetching to hold as the relative costs of going to NVM and back, speculatively, shift in comparison to the cost of idling the microcontroller during a cache miss? What are the application workflow assumptions, and how does modeling of off-chip communication flows impact the scale of the findings for end-to-end ((charge,compute)+,communicate) patterns?
+
+When first reading this, I was fairly excited about the problem statement, but the voltage-based throttling solution appears straightforward - this isn't a problem per se (simple approaches can be good approaches!), but I was hoping for a more unified contextualization of intermittent and non-intermittent prefetching in the discussion-oriented sections. As I see it, the whole challenge can be mapped to one where the reasons for a prefetch being untimely have changed. I therefore hoped to see a treatment that might explicitly unify notions of timeliness across both intermittent and non-intermittent execution into a common framework, but this work is not that. Absent that, the contributions are present, but seem much more narrow in scope and subject to validation of technology-specific assumptions at the <10% savings scale demonstrated.
+
+Questions for Rebuttal/Revision
+-------------------------------
+Please elaborate on your technology modeling for leakage currents and circuit/device choices made to mitigate leakage in an EHS targeted device.
+
+Please elaborate on the interconnect energy modeling for the NVM accesses.
+
+Please discuss the impact of communication energy modeling in end-to-end workload modeling compared to the application-kernel level evaluation performed.
+
+
+
+Review #323C
+===========================================================================
+* Updated: Mar 4, 2025
+
+Pre-Response Overall merit
+--------------------------
+A. Good paper, and I will champion it. (Does not have to be perfect!)
+
+Confidence
+----------
+Y. I am knowledgeable in this area, but not an expert
+
+Paper summary (brief)
+---------------------
+The paper describes IPEX: a prefetching extension in the context of intermittent computing. IPEX aims to improve the efficiency of existing prefetchers. It throttles prefetch operations if a power outage is imminent. Experimental results demonstrate that IPEX achieves an average of 7.86% reduction in energy consumption - which corresponds to an average of 8.96% performance gain relative to baseline energy harvesting systems.
+
+Why should this paper be in the program?
+----------------------------------------
+Simple, yet seemingly effective idea. The results reported (though not spectacular) are significant enough to justify consideration for acceptance.
+
+Comments for authors
+--------------------
+Interesting and novel work! The basic idea is simple and elegant. Oftentimes, in computer architecture, simple ideas are the most effective and attractive in terms of actual deployment. So, I feel this paper has merit in terms of having a good chance of being used in real product solutions. 
+
+However, in a scenario where the reported savings in energy is modest (i.e. 7.86%), and the evaluation methodology is simulation-based, the authors must be careful about the fidelity of the simulation tool(s) used. That is, the single digit (%) improvement in energy should ideally be supported by a brief description about how the energy model was derived (and hopefully calibrated) to ensure accuracy.
+
+==
+Post-rebuttal comment: thanks for providing a rebuttal/revision that addresses my concerns. I have upgraded my scores.
+
+Questions for Rebuttal/Revision
+-------------------------------
+Please see the comments above to get a general idea of the points of concern from this reviewer's perspective. Other simple queries:
+1) Can you please tell us briefly about the fidelity of the simulation-based analysis that is reported in this paper? Was the power-performance model validated or calibrated against a known reference? Is it possible that the reported improvement percentages have so much noise in the modeling that the real benefit percentages are really tiny? 
+2) Since the results are provided in terms of percentage improvement - is it possible for you to include some absolute power numbers, so that one could form a mental model about how costly (in terms of energy) data movements are in your environment (according to the energy model adopted). Also, correlating the reduction in NVM accesses to the tool-reported energy savings would be a good thing to aim for in an updated version. Again, I am urging the authors to invest into simulator validation/calibration.
+
+
+
+Review #323D
+===========================================================================
+* Updated: Mar 7, 2025
+
+Pre-Response Overall merit
+--------------------------
+B. OK paper, but I will not champion it
+
+Confidence
+----------
+Z. I am not an expert; my evaluation is that of an informed outsider
+
+Paper summary (brief)
+---------------------
+This work extends prefetching to the domain of intermittent processors.  Prefetching can bring good performance but usually comes at some energy waste due to useless prefetches. This work contemplates how to control prefetching degree to mitigate waste and improve performance in intermittent computing.
+
+Why should this paper be in the program?
+----------------------------------------
+It appears to be applying prefetching in a new use case and making it work more effectively there.
+
+Comments for authors
+--------------------
+The approach of this work makes a lot of sense. It's simple and effective. It seems to work well to use the current voltage level to control the prefetch degree. In that it delivers good performance and energy savings, this looks like it will be a new baseline to beat in this domain. I'm surprised if this hasn't been studied already. 
+
+The approach of adjusting the voltage threshold and tracking the throttled prefetches is interesting. It seems to work well. I'm wondering if you have studied how well it works with respect to the 5% threshold? The paper states that the 5% threshold is effective, but no data is presented that I noticed that evaluated that. Is the overall approach relatively insensitive to this number, and if so, what does that mean? If insensitive on average, are there any benchmarks you studied that were sensitive?  Also, does the prefetcher design matter for this threshold?
+
+The prefetchers evaluated in this work have little internal state and do not need long to decide what to prefetch.  Is this a requirement for this technique to work effectively?  Or, what other aspects of IPEX would need to be changed if the prefetcher took much longer to learn patterns?
+
+Questions for Rebuttal/Revision
+-------------------------------
+1) Is the technique sensitive to the 5% throttling threshold at all? Did any workloads show sensitivity?
+2) How easy would it be to extend IPEX to more complex prefetchers? Would it be worth it?
+
+
+
+Rebuttal Response by Author [Gan Fang <fang301@purdue.edu>] (0 words)
+---------------------------------------------------------------------------
+
+
+
+Comment @A1
+---------------------------------------------------------------------------
+Congratulations on your accepted ISCA paper!  In post rebuttal discussion the reviewers were broadly happy with the changes made.

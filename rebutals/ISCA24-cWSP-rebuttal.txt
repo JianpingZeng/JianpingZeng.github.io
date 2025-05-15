@@ -1,0 +1,413 @@
+ISCA '24 Paper #158 Reviews and Comments
+===========================================================================
+Paper #158 Compiler-Directed Whole-System Persistence
+
+
+Review #158A
+===========================================================================
+* Updated: Mar 5, 2024
+
+Paper summary
+-------------
+This paper proposes cWSP, a compiler/architecture codesign for whole system persistence (WSP).  cWSP intelligently recovers potentially inconsistent states by re-executing small portions of code, with the help of OSes and runtime libraries.
+
+Strengths
+---------
+The paper covers a lot of ground in NVM technology and improvements, and did a substantial amount of engineering effort in order to evaluate it.
+
+Weaknesses
+----------
+Too many details are left under-explained by the paper.
+
+Post-Rebuttal Overall Merit
+---------------------------
+3. Weak accept
+
+Overall merit
+-------------
+2. Weak reject
+
+Reviewer expertise
+------------------
+2. Some familiarity
+
+Reviewer confidence
+-------------------
+2. Medium
+
+Writing quality: is the paper easy to read and understand?
+----------------------------------------------------------
+2. Needs improvement
+
+Novelty
+-------
+3. New contribution
+
+Experimental methodology
+------------------------
+3. Acceptable: Reasonable methodology, adequate results
+
+Comments for authors
+--------------------
+cWSP discusses a lot of interesting ideas, but unfortunately I don't think the paper does a good job describing the many factors in play.  The paper may need a round of revision before it's ready for a wider audience to read.
+
+I'm not sure I follow the premise of the race condition in Figure 2b.  Are stores sent simultaneously down both paths, before reconverging at NVM?  Why send the stores twice?  I'm guessing this is described in the Capri paper in more detail, but I shouldn't have to go look there to understand.
+
+I can sort of see intuitively why WAR dependences are a factor in determining idempotency.  However, the paper seems to take it for granted that this is obviously *the* defining factor.  Perhaps this is also already covered in prior work, but it could use more explanation in this paper so it stands alone.
+
+In fact, the writing could use some improvement in a few places.  The paper jumps straight into "cWSP suggests changing CXL DRAM to PMEM" without even first describing cWSP.  It then jumps into detailed performance analysis.  There are spots where knowledges from prior papers (e.g., Capri, Penny) is assumed rather than explained.  Also, the graphs are very compressed, to the point that they're pretty hard to read.
+
+The engineering effort to patch libraries in IV-D is interesting and sounds like a useful contribution in and of itself.  Unfortunately, more explanation isn't really given here.  "i.e., a C macro" isn't particularly helpful.  Any information the authors could add here would be appreciated.  Is this the type of thing that could be contributed upstream?
+
+The explanation of the PB isn't super detailed, but I find it a little hard to believe that there isn't some kind of adverse effect due to delaying the draining of stores for long periods of time waiting for them to persist.  The paper claims the persist path is already faster than the regular path...can you elaborate?  Where is the low-latency, sufficiently-high bandwidth path coming from?  The cartoon diagrams aren't really giving me a good sense of that.  The paper draws short lines from MCs to core and back, but on large systems those two components aren't exactly close to each other.
+
+And then it turns out there's a separate round trip to the RBT also part of this critical path?
+
+How do the undo logs work?  Do they pull the old values out of NVM and store them into the log data structure?  Does that consume bandwidth?  I can sort of intuitively understand the process, but once again the paper lacks detail.
+
+If stores are silently dropped upon LLC eviction, how does the system ensure ordering of loads on the regular path vs. stores to the same address on the persist path?  This might have something to do with false positives in Figure 8, but that references the NVM WPQ which AFAICT is given no explanation in the paper.
+
+Re "upon power failure, at most one core is a critical section", that's obviously not true as written.  Different cores can be in critical sections for unrelated data structures.  Also inter-thread synchronization is about more than just mutexes.  Yet again, I don't think the high level intuition for what this section is getting at is wrong, but the details should matter.
+
+The methodology is fine, but I'm worried that no explanation is given about modeling the costs of all the extra paths that a normal Skylake wouldn't have.  However, the supporting data is very thorough.
+
+Post-Rebuttal:
+
+Thank you for all of the clarifications in the revised version.  I still have some doubts about the overheads, but the technique is an interesting alternative to prior work.
+
+Questions to address in rebuttal/revision
+-----------------------------------------
+Please address the issued raised in the comments section.
+
+
+
+Review #158B
+===========================================================================
+* Updated: Mar 5, 2024
+
+Paper summary
+-------------
+This paper proposes a compiler/architecture codesign solution for whole system persistence.   The design is strongly influenced by iDO logging, with additional hardware modifications to improve the overall system performance.  In particular, the authors highlight speculative memory controller logging to reduce pipeline stalls at region boundaries.
+
+Strengths
+---------
+* Very complete system (compiler extension, compiled kernel, simulation)
+* Interesting hardware modifications
+* Strong performance
+
+Weaknesses
+----------
+* Unclear answers for key design decisions
+* Some unclear assumptions
+
+Post-Rebuttal Overall Merit
+---------------------------
+3. Weak accept
+
+Overall merit
+-------------
+3. Weak accept
+
+Reviewer expertise
+------------------
+3. Knowledgeable
+
+Reviewer confidence
+-------------------
+3. High
+
+Writing quality: is the paper easy to read and understand?
+----------------------------------------------------------
+3. Adequate
+
+Novelty
+-------
+3. New contribution
+
+Experimental methodology
+------------------------
+3. Acceptable: Reasonable methodology, adequate results
+
+Comments for authors
+--------------------
+This is a large and polished piece of work.  I believe it merits publication in a top-tier venue.  The presented solution is sensible, and contains novel contributions.  In particular, the MC speculation is interesting, as is the integration of idempotence analysis between hardware and software.  The experimental analysis appears complete, and the scope of the work (e.g. compiling the full kernel) is impressive.  My criticisms are mostly minor (and based on the discussion section, likely mirror prior feedback the authors have received).  Despite my criticisms, I do think the paper is above the bar.
+
+The introduction is a bit wild at first.  I was confused why you started with Moore's law.  I'd recommend reworking the intro to be more concise and get to the point faster.  You do lose what the actual contribution is here, which I think can be summarized as "hardware accelerated iDO logging for whole system persistence".
+
+There are a few points where it's unclear what is novel vs. prior art.  In particular, the "live out registers" italics are basically done in iDO.  I also don't know that extending iDO from PSP to WSP is that novel.
+
+The discussion regarding coherence in 2A is confusing.  To my knowledge, the "stale read" problem described in Figure 2a/b cannot happen on an Intel x86 processor when using clwb/clflush, as it would manifest a coherence violation (or, to put it in the author's terms, the persist path is also the store path).  I'm skeptical that ntstores would trigger this situation, but am less sure.  Regardless, there appear to be some unstated assumptions regarding the underlying hardware here with respect to this scenario - I'm thinking the authors are assuming an architecture more common in the hardware literature (e.g. HOPS, PMEM-Spec) than in real systems.  Regardless, please clarify in the rebuttal.
+
+The MC speculation is similar to the Clobber Logging's mechanism of dealing with non-idempotent accesses.  It's worth discussing the differences in related works (I think it's different, but the technique is quite similar).
+
+The discussion section addresses many key weaknesses to a "recovery via resumption" scheme - these function basically as required disclosures!  Obviously, IO is a problem and multithreading/data races is a problem.  You should probably also mention that buggy software is a problem (you'd just resume the buggy code)!  I wish the authors had more to say about these fundamental limitations of the approach, in particular because they call into question the entire exercise.  Should we really be using recovery-via-resumption for WSP?  Other approaches (e.g. REDO logging at the MC) are far more robust.  I can't see this system really being adopted in practice because of these concerns.
+
+To harp a bit more, what about memory mapped IO devices?  How do we resume and what happens on region replay?  How is driver state reloaded? Can it be?  Similarly with multicore.  You discuss critical sections but a lot of code uses critical section free code (e.g. fetch and add primitives - these aren't data races but are nondeterministic).  What happens to these values on reexecution?
+
+Post rebuttal - thanks for the clarification.  I'd have preferred a better explanation wrt Clobber Logging (you somewhat missed the point that your "MC speculation" is really just undo logging into the next "transaction", combined with reexecution, which is basically a hardware implementation of clobber logging, which undoes stores to the start of the transaction then reexecutes).  Similarly, the clarification of the coherence model is terse and really should justify the use of a non-coherent persist buffer (again, I think you can lean into ntstores here).  That said, I have no real remaining technical concerns and lean towards acceptance with shepherding.
+
+Questions to address in rebuttal/revision
+-----------------------------------------
+see review.
+
+
+
+Review #158C
+===========================================================================
+
+Paper summary
+-------------
+cWSP (Compiler-Directed Whole-System Persistence) is a scheme for providing persistence for an entire system, from the OS through user libraries and application code. cWSP's main insight is to leverage the non-temporal data path for streaming stores directly to the (non-volatile) memory, bypassing caches and writing at store granularity instead of cache line granularity. This avoids the overhead of using the conventional cache hierarchy and having to persist dirty cache lines strewn throughout the caches before a power outage.
+
+Strengths
+---------
+Neat idea to borrow/steal the non-temporal store datapath for persisting stores. Combined with other solid design choices (idempotent failure regions for easier recovery, pipelining across failure regions), the overall cWSP scheme is very interesting.
+
+Weaknesses
+----------
+The hardware time/space modeling seems overly optimistic.
+
+Overall merit
+-------------
+3. Weak accept
+
+Reviewer expertise
+------------------
+2. Some familiarity
+
+Reviewer confidence
+-------------------
+2. Medium
+
+Writing quality: is the paper easy to read and understand?
+----------------------------------------------------------
+3. Adequate
+
+Novelty
+-------
+2. Incremental improvement
+
+Experimental methodology
+------------------------
+4. Excellent
+
+Comments for authors
+--------------------
+I liked reading this paper, and I appreciate the neat repurposing of the non-temporal store datapath to handle non-volatile writes instead. I found the experiments quite thorough, comparing to not just related work but also with forward-looking CXL experiments and a wide variety of sensitivity studies that shed a lot of light into the performance-critical parts of cWSP. I had some technical questions (below), but overall I feel this paper should be accepted.
+
+One recurring formatting issue: there are a couple lines stranded at the top of pages 3, 5 and 10 on top of a figure. These lines are easy to miss when reading through the paper. It would be much better if these were moved below their figures.
+
+Questions to address in rebuttal/revision
+-----------------------------------------
+Is the Persist Buffer (PB) kept coherent? It seems that the L1D has a superset of its contents, since the PB is all dirty and writebacks are paused until the PB entry can drain. But what about incoming invalidations or read requests for data in the PB? It would seem complicated to allow writes to a line in the PB, because then there are multiple stores in different PBs that need to be ordered wrt one another. On the other hand, delaying invalidations could risk deadlock?
+
+Is there any risk of deadlock by delaying writebacks from the L1D?
+
+Page 5 notes that "In addition, cWSP ensures that the data being stored arrives in NVM only through the persist path by silently dropping dirty cacheline on its LLC eviction." However, since dirty evictions from the L1D must be persisted to NVM (via the PB), is there a need to keep the line marked dirty after that? Couldn't everything in the L2 and LLC be clean all the time? This would save L2/LLC writeback buffers (not sure if Skylake has those), and also simplify those caches somewhat.
+
+I am concerned that the hardware costs of the PB are overly optimistic. Page 7 says that "In each cycle, cWSP scans the PB from its head to rear sending an unsent entry to the target MC through the persist path". Does the original WCB support these kinds of associative lookups?
+
+Relatedly, the WCB was originally tasked with handling non-temporal stores, which were prevalent enough to merit a dedicated hardware structure. Presumably such NT stores are much slower or not possible (i.e., treated as regular stores) now that the PB has been repurposed? The PB isn't really free. It's not huge, either, at 50 entries (8B each plus some metadata?) but it is much bigger than the RBT. I think cWSP's claimed hardware costs of 160B/core are a little understated; including the PB in cWSP's size overhead would be fairer (and still low overall).
+
+Page 7 mentions that "cWSP encounters challenges since it cannot recompile the essential assembly code required for implementing system calls". Assembly code in general is a challenge for compiler-based schemes. glibc has a lot of asm code in it as well, how does cWSP handle that?
+
+
+
+Review #158D
+===========================================================================
+* Updated: Mar 13, 2024
+
+Paper summary
+-------------
+The paper proposes compiler and architectural approach for whole system persistence.
+
+Weaknesses
+----------
+* Ideas are not described in adequate detail and with good flow making paper hard to read
+
+Post-Rebuttal Overall Merit
+---------------------------
+2. Weak reject
+
+Overall merit
+-------------
+2. Weak reject
+
+Reviewer expertise
+------------------
+2. Some familiarity
+
+Reviewer confidence
+-------------------
+3. High
+
+Writing quality: is the paper easy to read and understand?
+----------------------------------------------------------
+2. Needs improvement
+
+Novelty
+-------
+2. Incremental improvement
+
+Experimental methodology
+------------------------
+3. Acceptable: Reasonable methodology, adequate results
+
+Comments for authors
+--------------------
+* I am not a big fan of whole system persistence as it requires needless complexity, and applications require persisting a subset of data in NVM using a disciplined programming model. Whole system persistence is complicated because it is very difficult to restart the virtual machines, Java runtime layers, OS drivers and system libraries etc in sound state.
+
+* The paper seems to exploit compiler's help to implement a recovery protocol to mitigate hardware overheads in prior work but the compiler pass and its details are not discussed in adequate detail.
+
+* In general, I find the paper hard to follow. The flow makes understanding the idea very difficult.
+
+* In Fig.2 why are the stores sent twice through the persist path? The explanation is not clear.
+
+* The paper discusses WAR hazard across epochs but it is not clear why this is the only problem. Is this discussed in prior work? WAR hazards are handled in hardware by a reorder buffer so it is confusing why they are a problem across region boundaries. (?) Programs have anti-dependences. WAR is a hazard that could happen due to anti-dependence. WAR in out-of-order CPUs is a possibility and mitigated via reorder buffer. All instructions commit in order. So I am confused what you mean by programs have WAR dependence. This paper definitely needs a revision!!
+
+Overall, the paper needs significant polishing of ideas and flow to make it readable for a wider audience.
+
+
+
+Review #158E
+===========================================================================
+* Updated: Feb 27, 2024
+
+Paper summary
+-------------
+An approach for whole system persistence is proposed that leverages the compiler to form small epochs and hardware to persist the state of each epoch in the background. Attention is paid to ensure that it will work for both OS/kernel and library code in addition to user-level code.
+
+Strengths
+---------
++ Whole system persistence using both compiler and hardware support is an interesting direction for reducing overhead.
++ Discussion of OS-level support gives the work added robustness.
+
+Weaknesses
+----------
+- The paper is an amalgamation of many ideas with the main benefit being its overall efficiency and not any one particular insight, which makes the paper at times hard to read and digest.
+- Some details of how the compiler works are not explained in sufficient depth. 
+- How hardware and compiler coordinate is not clear.
+- The comparison to prior schemes offering partial persistence may be incorrect.
+
+Post-Rebuttal Overall Merit
+---------------------------
+3. Weak accept
+
+Overall merit
+-------------
+3. Weak accept
+
+Reviewer expertise
+------------------
+3. Knowledgeable
+
+Reviewer confidence
+-------------------
+3. High
+
+Writing quality: is the paper easy to read and understand?
+----------------------------------------------------------
+2. Needs improvement
+
+Novelty
+-------
+2. Incremental improvement
+
+Experimental methodology
+------------------------
+2. Fair: Reasonable methodology, needs more results
+
+Comments for authors
+--------------------
+Thanks for submitting your work to ISCA! It's quite interesting, and it's clear you've put a lot of time and effort into this submission. It shows through in the quality discussions, great figures, the long list of cited works, and detailed evaluation with many sensitivity studies.
+
+The goal of using the compiler to help with whole system persistence is a good goal. It makes sense that the compiler can form epochs and then schedule updates to memory efficiently in ways that avoid checkpointing the entire register file naively.  I also like the use of the persist path to persist state in the background.   Memory Controller Speculation uses undo logging allows the MCs to decouple from each other and also from the core enabling performance and correctness in multiple MC system.
+
+There were some things I didn't understand well that I hope you can clarify for me in your response.
+
+1. It's clear from the paper that the compiler creates epochs and schedules checkpoints for registers.  However, it's never really explained what these epochs look like or where the register checkpoints are stored.  For example, to save a register, there must be a location in memory where it is being written.  That would probably involve some overhead to calculate.  What is needed to checkpoint registers and how much overhead does it entail? Is that evaluated? Also, who/what manages checkpoint storage?
+
+Post-rebuttal: Thanks for the extra detail. I understand better now what you did.
+
+
+2. Some time is spent discussing the stale read problem and proposing a solution for it.  A proposed solution is "eliminate stale reads by adding a signal that delays eviction from write buffer if a matching line is in the persist buffer."  It's not clear if this is sufficient for a deep memory hierarchy or even the single chip.  The location of the persist buffer, where it drains, and how loads interact with it is not spelled out thoroughly. Also, if the persist path, once it leaves the chip, is still distinct from the load path until it reaches the NVM device, possibly a CXL device with many buffers between the core and the NVM, then the proposed method may yet be insufficient since there is no way to know when the store has fully persisted.  Can we rely on the proposed signal as being fully sufficient in a deep memory hierarchy, and what other requirements are needed on chip for this to work?
+
+Post-rebuttal: I read through the changes and various modifications. I'm still confused. This paper either hasn't explained or fully considered the implications of the deep memory hierarchy.
+
+3. When discussing idempotent region formation, many details are omitted. It's not clear exactly what it means to form regions. How are they demarcated by the compiler? Some change must be made to the IR/binary to indicate these regions but its not described. Furthermore, They need to be communicated to hardware for the hardware mechanisms to work, especially the speculative  updates at the MC.  Also a min-cut algorithm is mentioned, but it's not clear explained why its useful or how important it is.  Also, is there a limit to how large the write-set of a region can be that's dictated by hardware?
+
+Post-rebuttal: Thanks for the extra detail. It's better now.
+
+4. The comparison to partial persistence in the evaluation shows a plot that labels BBB/eADR/LightPC all together. This is very confusing and perhaps misleading.  I think that eADR and BBB, for example, would have very different performance characteristics. In fact, most of the overhead in an eADR system happens when power is lost and upon recovery to save and restore the checkpoint. It would seem that eADR should in fact show a very low overhead, even less than the proposed work.  Can you explain why the figure would look this way or worse for an eADR system?
+
+Post-rebuttal: You explain that BBB/eADR doesn't get the benefit from the DRAM cache, and that's the performance gap.  But, I don't understand how the proposed system is getting a benefit from the DRAM cache, either.  I may have missed that somewhere in the work. 
+
+5. In the introduction, the paper makes the claim that Partial System Persistence requires the insertion of fences and flushes. However, that is not true of eADR systems or other systems that work in a similar way.  The claim is perhaps overstated or needs to be further clarified.
+
+Questions to address in rebuttal/revision
+-----------------------------------------
+Please respond to questions 1-4 raised above.
+
+
+
+Rebuttal Response by Author [Jianping Zeng <jpzeng92@gmail.com>] (0 words)
+---------------------------------------------------------------------------
+
+
+
+Comment @A1 by Administrator
+---------------------------------------------------------------------------
+Your paper has been accepted with shepherding. The reviewers felt that the changes in the revision were sufficiently broad to make it harder for reviewers to identify whether their feedback had been addressed. There are several changes the reviewers would like to see in order to accept the paper.
+
+1) Please tone down the over-reaching claims in the paper.  For example, multiple reviewers did not agree with this sentence: "Additionally, PSP schemes always persist data to NVM, thereby being unable to exploit DRAM for high performance."
+
+This is one example that needs clarification. We would also like the claims surrounding whole system persistence to be more measured and consistent with what was actually evaluated in the work.  For example, to my knowledge, the work doesn't show successful system-level recovery through an experiment, but rather just the potential to do so with low overhead. Please clarify such claims.
+
+2) Also, there was concern over the correctness of the approach in the context of a deep memory hierarchy with a DRAM cache. Please clarify how the DRAM cache works with the proposed technique. In particular, if there is a write to data on the persist path to the same blocks held in the DRAM cache, what is needed to bring the DRAM up to date and keep it consistent. Is the DRAM updated at write or flushed or kept coherent in some other way?  How can you be sure that stale reads cannot also occur from the DRAM cache?
+
+Thank you and we look forward to seeing a revised version of the paper with these changes.
+
+
+Comment @A2 by Author [Jianping Zeng <jpzeng92@gmail.com>]
+---------------------------------------------------------------------------
+We appreciate the reviewers' comments on improving this work. Please see our revision plan as follows.
+
+### Q1-Reviewer-B: Better explanation wrt Clobber Logging?
+We will adjust Section X accordingly.
+
+### Q2-Reviewer-B: Terse clarification of the coherence model and the justification of using a non-coherent persist buffer?
+Thank you for highlighting this. We will include a new paragraph in Section V.A.1 to discuss why the PB is not included in the cache coherence domain.
+
+### Q3-Reviewer-E: Implications of the deep memory hierarchy?
+We apologize for the confusion. With assumed capacitor-based WPQ in CXL Home Agent---integrated into the cores like memory controllers, cWSP expands the persistence domain up to the WPQ as with Intel ADR; we will include an architectural diagram for CXL in Figure 3 and detail it in Section IX.B in the revision. That way, the data being stored becomes durable and persistent once it arrives in the WPQ along the persist path---without being affected by the data transferring through the internal buffers of NVM/CXL devices. The implication is twofold: (1) cWSP only delays the L1D's WB writeback until the matching PB entry is drained to the WPQ. (2) the delay of the WB writeback technically is not affected by the depth of memory hierarchy.
+
+### Q4-Reviewer-E: Why does cWSP get benefits from DRAM cache?
+cWSP maintains consistent program states even in the presence of DRAM cache for all kinds of program, thus enabling DRAM cache---for high performance---without worrying about the crash consistency issue.
+
+We will include this explanation in the 7th paragraph in Section I.
+
+### Q5-Comment: Over-reaching claim?
+Thank you for pointing it out. We will address this in the corresponding 6th paragraph in Section I.
+
+### Q6-Comment: Consistent claims surrounding WSP?
+We appreciate the reviewers' comments on this claim. A paragraph will be included in Section VIII for further clarification.
+
+### Q7-Comment: Correctness about DRAM cache?
+We apologize for the confusion. cWSP technically does not have this issue since cWSP prevents it from occurring for DRAM cache (LLC). We will fix the text in Section V.A.I and corresponding figures, such as Figure 3(b), Figure 6, Figure 8(b), and Figure 10(a), to highlight the DRAM cache (LLC) for a better understanding.
+
+We look forward to your feedback.
+
+
+-----------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------
+
+Dear Shepherd,
+
+We apologize for the late revision due to personal issues. For Q3, we add a new Figure 16 in the revision instead of combining it with the existing Figure 3 for a better layout. Please see the red in the revision for how we address the above concerns raised by reviewers. In addition, we also highlight some other changes in blue to facilitate a better understanding of our paper.
+
+Yours Sincerely!
+
+
+Comment @A3 by Administrator
+---------------------------------------------------------------------------
+Dear authors, thanks for the revision. The shepherd is satisfied with the edits to the paper and your paper is now marked as Accepted. Congratulations, and we look forward to seeing your presentation in Argentina!

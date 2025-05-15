@@ -1,0 +1,245 @@
+ICS 2024 Paper #89 Reviews and Comments
+===========================================================================
+Paper #89 Soft Error Resilience at Near-Zero Cost
+
+
+Review #89A
+===========================================================================
+
+Paper summary
+-------------
+The paper looks at an important problem how how to protect the OoO pipeline from soft errors. The design leverages acoustic detectors like several prior works. However, compared to a SOTA work, the proposed design significantly reduces the hardware state. In addition to the hardware optimization, the paper also explores/reapplies several well-known existing compiler optimization to this new context.
+
+Reviewer expertise
+------------------
+2. Some familiarity (read some papers)
+
+Strengths
+---------
++The paper simplifies the hardware states required for acoustic-based software error resilience. 
++The paper looks at both hardware and compiler optimizations
++The evaluation seems quite solid.
+
+Weaknesses
+----------
+- The paper can better describe the downside of the proposed design without the RBBs compared to the prior design with the RBBs
+- The writing needs to clarify the key ideas, instead of relying on patient readers to reverse-engineer them from all the details.
+
+Questions for authors’ response
+-------------------------------
+-What all falls under the access latency (ns) column in Table 1? Is it just the latency of accessing the added registers?
+-I assume lines 7 to 12 in Algorithm 1 must complete synchronously w.r.t the OoO cpu's regular commit stage committing a boundary instruction (i.e., not a cycle late or early, which would cause some stores to become uncovered). What is the length (in ns) of the critical path of the digital circuits to perform lines 7 to 12? Would this slow down the OoO cpu's regular commit stage?
+
+Novelty
+-------
+2. Incremental improvement
+
+Writing quality
+---------------
+2. Needs improvement
+
+Overall merit
+-------------
+3. Weak accept
+
+Comments for authors
+--------------------
+I learned a lot of interesting things reading the paper. I like the goal of the paper - making the cost of acoustic-based error resilience low enough for commercial adoption. I also appreciate the importance of the problem.
+
+I think the core idea of the paper (besides the additional compiler optimizations of how to reapply known techniques to this new context) is eliminating the RBB in Turnstile. The RBB cause a non-negligible hardware state overhead and can cause the pipeline to stall when the RBB full. Unfortunately, this draft does not describe the main reason why Turnstile added the RBB. It essentially states Turnstile has the RBB and that it is bad; then the paper proposes to remove the RBB. To fully understand why the new RBB-less design is correct and will work, I naturally want to understand why the RBBs were used in the first place. So I literally spent an hour trying to re-read the paper to understand/reverse-engineer why Turnstile uses the RBB. I couldn't derive a solid answer. So I had to spend another hour to try to read VeriPipe's design independent of Turntile to see if it has correctness/reliability issues; eventually, I concluded I couldn't find any wrong with the new design without the RBBs so I gave the paper a weak accept. 
+
+But this whole experience of trying to understand why the new design can work without the RBB was truly frustrating and time-consuming. A much nicer story flow is that Turnstile added RBB entries for purpose X, we find purpose X to be unnecessary due to reason Y, so we created a new design without the RBB. 
+
+Here is my conjecture of why Turnstile adds RBBs. My guess is that Turnstile manages things in the background; for example, periodically, Turnstile asynchronously checks all the RBB entries to see which regions are ready for commit and then clear out the corresponding RBB entries. If an error is reported, Turnstile goes through the RBB entries to find the oldest region whose start time is after the current time minus the detection latency and re-executes starting from that region. In comparison, Veripipe requires synchronously managing things w.r.t to the OoO CPU's regular commit stage in order to to complete lines 7-12 in Algorithm 1 while the regular commit stage commits a boundary instruction. Is this the key tradeoff? If this is the key tradeoff, what is the impact of adding synchronous operations on the pipeline's frequency? 
+
+Alternatively, the RBB entries in Turnstile may just inherently be redundant and bad; this is conceivable considering Turnstile was a seminal work and many of its details are crude. If this is the case, why not just state so, instead of tempting readers on a wild goose chase to understand the purpose of the RBB entries that you propose to remove.
+
+
+
+Review #89B
+===========================================================================
+
+Paper summary
+-------------
+This paper introduces a novel hardware/software scheme to be able to verify that regions of codes have been executed without soft errors. It builds on prior work on error detection using acoustic sensors as well as a prior verification scheme, which the authors claim had higher overheads.
+
+Reviewer expertise
+------------------
+2. Some familiarity (read some papers)
+
+Strengths
+---------
+- Important topic
+- Well written paper, which is mostly easy to follow
+- Wide range of benchmarks showing good results
+
+Weaknesses
+----------
+- The addition to prior work on how regions are extended is somewhat incremental
+- The base processor is not really HPC-capable and not fully the focus of the conference
+
+Questions for authors’ response
+-------------------------------
+- Why was the simulation based on a mid-range ARM processor rather than a high-end HPC design and do the authors expect any significant differences when moving to a different core design and smaller feature sizes?
+- How does approach work on inter-core synchronisation and how does it scale up to larger core counts?
+
+Novelty
+-------
+2. Incremental improvement
+
+Writing quality
+---------------
+4. Well-written
+
+Overall merit
+-------------
+3. Weak accept
+
+Comments for authors
+--------------------
+The approach is interesting and shows great potential, although it seems a bit incremental compared to the prior work. Although, the argument for not doing fault injection is reasonable for performance evaluations, it would have been helpful to show correctness and to show that correction overhead is fully independent on where the error happens.
+
+
+
+Review #89C
+===========================================================================
+
+Paper summary
+-------------
+The paper uses acoustic sensors for soft error detection in CPUs and proposes a resilient design with low cost compared to previous approaches
+
+Reviewer expertise
+------------------
+3. Knowledgeable (reasonably related to my own research and I have cited
+   works in this space)
+
+Strengths
+---------
+The topic of resilience is still important although focus has moved from soft errors to marginal silicon defects and variability.
+
+Weaknesses
+----------
+Relatively marginal novelty over previous approaches. 
+Non-zero but not surprising improvements.
+
+Questions for authors’ response
+-------------------------------
+Please see comments.
+
+Novelty
+-------
+2. Incremental improvement
+
+Writing quality
+---------------
+4. Well-written
+
+Overall merit
+-------------
+3. Weak accept
+
+Comments for authors
+--------------------
+The paper is well written and the design for resilience once a particle hit is detected by the acoustic sensors is well described. This description clearly demonstrates why the cost of the approach is small.
+
+The improvement in terms of area overhead is not dramatic (1% vs. 9%) and this will also depend on the targeted OoO CPU. In a much larger design the overheads to compare may be even smaller (say 0.3% vs. 3%) so this is probably not the huge benefit the approach brings.
+
+The uncertainty of using acoustic sensors since their inception is on the fact that what they detect is not the error itself (a flipped bit or bits) but the particle hitting (which may or may not lead to flips). This raises the issue of the practicality of any approach based on them. I am fine with the authors claim that fault injection is not needed if one assumes there is a 100% detection probability. But beyond that point of time, a very broad sensitivity analysis is needed about the extend of fault positives (the paper does include discussion on that) and the cost they incur.
+
+
+
+Rebuttal Response by Author [Jianping Zeng <jpzeng92@gmail.com>] (837 words)
+---------------------------------------------------------------------------
+We appreciate reviewers' thorough comments and patience in reading the paper.
+
+### Q1-Reviewer-C: Uncertainty of using acoustic sensors?
+We believe our community should foster forward-looking technology and encourage people to explore it aggressively so that it can be commercialized in the near future.
+
+For example, hardware transactional memory (HTM) was revisited and revamped---mostly by Rajwar and Goodman [ASPLOS'02] and Hammond et al [ISCA'04]---early 2000s onwards, though the original idea of architectural support for HTM was introduced by Herlihy and Moss [ISCA'93]. Since then, it took Intel 20 years to integrate HTM into the Haswell microarchitecture (released back in 2013). If our community had rejected the ASPLOS'02 and ISCA'04 papers due to certain uncertainty found in the original HTM proposal [ISCA'93], we might have needed to wait for another decade to use HTM in commodity processors.
+
+### Q2-Reviewer-C: The improvement in terms of area overhead is not dramatic (1% vs 9%)?
+No, this is not true, and we suspect that there might be a misunderstanding here. Actually, these numbers (1% vs 9%) are not area overheads but run-time overheads of VeriPipe and Turnstile, respectively. As shown in Table 1, VeriPipe needs only 8.8% of Turnstile's area cost. Note that Turnstile's hardware structures require complex peripheral circuitry, resulting in way longer access latency than VeriPipe, e.g., Turnstile (0.26ns) vs VeriPipe (0.07ns). This implies that Turnstile restricts the core frequency to a maximum of 3.86GHz, making it impossible to be used for current and future high-end processors. In contrast, VeriPipe has no such constraints thanks to its lightweight design.
+
+Most importantly, even if future process technologies might be ready for higher clock frequency, Turnstile's intricate peripheral circuitry poses a significant challenge in reducing its wire delay, which scales more slowly compared to transistor delay, as highlighted by the following prior work [a,b,c,d] on processor core design. Consequently, it is expected that increasing the clock frequency of Turnstile-enabled processors remains a daunting challenge in the (near) future.
+
+[a] Managing Wire Delay in Large Chip-Multiprocessor Caches, MICRO'04 \
+[b] Evaluation of the Raw Microprocessor: An Exposed-Wire-Delay Architecture for ILP and Streams, ISCA'04 \
+[c] Clock Rate versus IPC: The End of the Road for Conventional Microarchitectures, ISCA'00 \
+[d] Will Physical Scalability Sabotage Performance Gains? IEEE Computer 30, 9 (September 1997)
+
+
+### Q3-Reviewer-B: The base processor is not really HPC-capable?
+That is not true. Indeed, the simulation parameters of VeriPipe used in the paper thoroughly model typical ARM-based server-class processors. To the best of our knowledge, the most recent  ARM server processors (i.e., Neoverse N2 and V1) are identical to Cortex A77 evaluated in our paper---except the LLC size; they are anticipated to be extensively deployed in datacenters/HPC clusters as with Microsoft Azure Cobalt 100 based on Neoverse. Moreover, as shown in Figure 19, VeriPipe still maintains a negligible run-time overhead on even larger ARM processors (in die size) such as Apple M1 and Marvell ThunderX3; ThunderX1/2 processors have already been used for large-scale HPC clusters [e,f], while M1 is one of the largest ARM cores, which we believe represents the future direction of ARM-based server processors.
+
+[e] A performance analysis of the first generation of HPC-optimized Arm processors \
+[f] Advanced performance analysis of hpc workloads on cavium thunderx
+
+### Q4-Reviewer-B: How does approach work on inter-core synchronization and its impact on larger core counts?
+Please refer to Section VII that discusses how VeriPipe recovers from soft errors for multi-cores. Figure 21 demonstrates that VeriPipe's impact on performance remains negligible, even with larger core counts; specifically, VeriPipe incurs only an average of 1% run-time overhead for 64 cores. The reason is that VeriPipe causes minimal pipeline stalls at the end of the majority of regions---since they are sufficiently long enough to hide the verification latency (see Figure 17).
+
+### Q5-Reviewer-A: What all falls under the access latency (ns) column in Table 1?
+We apologize for the confusion. The access latency column in Table 1 shows the longest access latency of the proposed hardware components of VeriPipe and Turnstile, respectively. We will clarify this in the final copy.
+
+### Q6-Reviewer-A: Synchronously complete the operations at lines 7-12 in Algorithm 1? What is the impact on OoO core's commit stage?
+Yes, VeriPipe performs them on the commit of a region boundary. That said, VeriPipe has practically no impact on the core pipeline's commit stage, since its critical path remains the same. That is because VeriPipe resets its timer and updates 3 registers (e.g., Recovery PC, etc) simultaneously---i.e., all the 4 steps are done at the same time---within way less than a single cycle (0.07ns which is 0.17 cycles).
+
+### Q7-Reviewer-C: Relatively marginal novelty?
+As reviewers A and B appreciate our technical contributions, we believe that the beauty of VeriPipe lies in its simple yet effective off-the-critical-path hardware logic, making it possible to be deployed in real silicon (see the answer to Q2 as well). Moreover, VeriPipe's hardware techniques are combined with its compiler optimizations in a synergistic way to achieve near-zero-overhead soft error resilience.
+
+### Q8-Reviewer-A: Better story flow?
+We appreciate reviewer's suggestion and will incorporate it into the final copy.
+
+
+
+Review #89D
+===========================================================================
+
+Paper summary
+-------------
+This paper presents VeriPipe, a soft-error mitigation approach for computational units that requires minimal modifications to existing hardware (extra registers and a slightly modified workflow) in order to react to accoustic sensors that detect potential silent errors. The key innovation of the paper is a pipelined approach where the execution is split into regions long enough to cover  the delay of the accoustic sensors, and then verify the previous region in parallel with the prior region. The authors introduce several optimizations regarding the verification, notably register liveness tracking and checkpointing from one region to another.
+
+Reviewer expertise
+------------------
+3. Knowledgeable (reasonably related to my own research and I have cited
+   works in this space)
+
+Strengths
+---------
+Overall the paper formulates a promising problem statement and introduces compelling ideas to solve it. The use of micro-checkpointing techniques at hardware level is an interesting concept.
+
+Weaknesses
+----------
+Improvement is needed though in several areas: motivation, core ideas and experimental evaluation. Specifically:
+
+First, the authors start from the premise that memory is protected by ECC and the only other components whose protection needs to be ensured are the computational units. However, in a real-life system there could be many other sources of slient errors: memory lanes, PCIe links, etc. Without a clear bigger picture, it's not immediately obvious how the proposal will have an impact. The authors need to provide more evidence that computational units are indeed  the weak link in the chain. Furthermore, many applications introduce their own verification and resilience techniques not only because of silent errors but also because of fail-stop errors. How would your approach complement such approaches? Surely, applications cannot give up on resilience completely. For example, some applications use checksums and erasure codes (ABFT), others use application-level checkpointing. Can we reduce the frequency/cost of such higher-level resilience techniques using your approach? If so, by how much? Such aspects merit a more elaborate discussion.
+
+Second, the concept proposed by the authors relies on identifying the liveness of registers and checkpointing them accordingly. However, I feel the paper does not detail enough the interactions 
+between the compute units and the outside world (which is assumed safe). It seems the authors use a staging area (SQ) to defer commits to the memory until they are verified. But how do you make sure that the staging area has enough space? What is there are a lot of interaction between registers, caches and external memory? What size is safe so that using half of SQ is guaranteed not to overflow? Second, what makes the staging area trusted? Is it using ECC? What about multiple cores and competition between them for caches and memory? How do you
+guarantee coherency under concurrency? Such details need to be clarified.
+
+Experimentally the paper does not simulate soft errors and evaluate the impact of rollbacks. In addition to showing the runtime overhead in the absence of soft errors, a key part of
+the evaluation should study what happens when they do occur. I do not understand the point about not using fault injection (Sec VII). Even if the accoustic sensors can be considered perfect detectors, you need to simulate their triggering to see what happens in the case of a soft error. This is a major area of improvement.
+
+Questions for authors’ response
+-------------------------------
+Please insist on the remarks about the experimental part.
+
+Novelty
+-------
+2. Incremental improvement
+
+Writing quality
+---------------
+4. Well-written
+
+Overall merit
+-------------
+3. Weak accept
+
+
+
+Comment @A1 by Reviewer C
+---------------------------------------------------------------------------
+**Reviews and Discussion Summary.**
+
+Congratulations on the acceptance of your paper. The reviewers are satisfied with your responses. Please do your best effort to include the final version the parts of your rebuttal response that will make more clear the points already raised by the reviewers. This will further improve the final paper and will transfer its message to the readers.

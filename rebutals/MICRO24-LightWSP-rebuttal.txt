@@ -1,0 +1,516 @@
+MICRO-57 Paper #146 Reviews and Comments
+===========================================================================
+Paper #146 LightWSP: Whole-System Persistence on the Cheap
+
+
+Review #146A
+===========================================================================
+* Updated: Jul 4, 2024
+
+Paper summary
+-------------
+The paper proposes a technique for providing whole-system persistence when DRAM is used as a cache and persistent memory used as the backing store.  The crux of the idea is to break an application into regions and use non-temporal writes within each to send data direct to the persistent memory, where it's held in the write queue.  At the end of the region, live-out registers are also stored back and then the write queue is drained of its stores for that finished region.  The paper deals with various issues around data coherence and interactions with other cores.
+
+Top Reasons to Accept the Paper
+-------------------------------
+Seems like a solid proposal to provide persistence mostly using existing mechanisms.
+
+Top Reasons to Reject the Paper
+-------------------------------
+There is a certain amount of complexity involved, especially around handling LLC misses when data is in the WPQ.  The authors have not convinced me that this can't deadlock.
+
+Reviewer expertise
+------------------
+2. Some familiarity: I have a passing knowledge of this topic but do not
+   follow the relevant literature.
+
+Reviewer confidence
+-------------------
+3. High: I understand the key aspects of the paper to a great extent.
+
+Novelty
+-------
+2. Incremental improvement.
+
+Overall Merit
+-------------
+3. On the fence, lean accept.
+
+Detailed Feedback for Authors
+-----------------------------
+The paper makes a big play up front about the use of non-temporal store instructions, such as `MOVNTQ` and `MOVNTDQ`, greatly reducing the bandwidth requirements of writing back to NVM.  But do we know that these data paths really are only 8B wide, as claimed?  In later vector architectures beyond SSE, the latter instruction can store up to 64B of data at a time as a non-temporal store.  So is the data path really 64B wide and it's therefore a moot point whether you only use 8B of it at a time, since nothing else can use the remainder?  Or do we have reason to suspect that it is much narrower than that?
+
+Incidentally, the assumption up front is that 8B is the width of stores back to memory, but if there is any vector code then it could well be that 64B is required at times.  Certainly if any vector registers are live out of a region then they will need to be checkpointed, so perhaps even LightWSP can't avoid this.  Were there vector operations in your benchmarks (I hope so with -O3 optimization)?  How did you model the width of this non-temporal data path in gem5?  How is vector data handled if WPQ entries only contain 8B of data (figure 3)?
+
+LightWSP provides a front-end buffer to reduce the possibility of a store buffer stall.  But from the wording, this implies that it doesn't eliminate the possibility?  Can this system deadlock?  In other words, can you have a situation with $n$ cores all writing to one memory controller, its WPQ fills up as does each front-end buffer and then all cores experience a store buffer stall and can't make progress?  I don't think this can happen, but it's really not clear to me given the lack of a guarantee above.  I would have expected some discussion on deadlock avoidance if stalls can happen.
+
+Regions are actually quite small, if only 32 stores are allowed (and that's including the checkpoint stores of live-out registers)?  And the compiler has to be conservative and insert a region boundary if *any* path through the CFG to a program point has reached the maximum.  How big are regions, typically?
+
+Figure 2 is shows what looks like each core having a dedicated path to its own WPQ, but this isn't what it's like in reality.  There much be paths from all cores to all WPQs and in your system that's 8 cores to 2 WPQs?
+
+Section IV.C confused me.  How can multiple threads be concurrently writing to the same addresses within a critical section?  Section III.E already said that locks or semaphores must be used to create data-race-free programs and that each synchronization primitive defines a region boundary, so where does the problem come from?  How does the reordering occur?  The problem here is really opaque.  I can understand have multiple reader, single writer locks, but multiple writer locks?
+
+As an aside, how does LightWSP deal with atomic instructions?  Do they end a region, or are in a region by themselves?
+
+Details around LLC load miss handling seem complicated.  It might be ages before data in the WPQ is flushed into NVM (because the region may have few stores in).  What happens now?  Does the memory controller service other LLC miss requests in the meantime or does the whole cache hierarchy have to wait for the WPQ containing the required data to be flushed?
+
+Will your compiler and simulator be open sourced on publication?
+
+Why was STAMP compiled as a set of sequential programs, rather than multithreaded?
+
+I'm not sure where the figure of 12.56% higher asynchronous persistence efficiency comes from in section V.C — I can't see how that is obtained from 89.27% and 99.99%.  Also, do we really need two decimal places here?
+
+Questions for Authors to Address in Revision/Rebuttal
+-----------------------------------------------------
+Please describe how vector data is handled in LightWSP.  Also, please clarify section IV.C where I can't understand the problem if a program is data-race free.  I'd appreciate some guarantee of deadlock freedom and also a longer explanation of what happens on LLC miss that hits in the WPQ.
+
+Post-Revision/Rebuttal Overall Merit
+------------------------------------
+3. On the fence, lean accept.
+
+
+
+Review #146B
+===========================================================================
+* Updated: Jul 3, 2024
+
+Paper summary
+-------------
+The paper presents a design to use battery-backed store queue in memory controllers to realize whole-system persistency without the use of checkpointing or persistent transactions. The idea is to use compilers to partition a program into many small regions and insert the persisting operations at the boundaries of every region, including persisting registers.
+
+Top Reasons to Accept the Paper
+-------------------------------
+* An approach different from prior work
+
+Top Reasons to Reject the Paper
+-------------------------------
+* Some technical details are unclear, causing questions on the soundness of the solution
+* It is unclear how the solution deals with compile-time unknowns
+* The granularity of a region is very small; it is surprising to see the reported small overhead numbers
+* It is unclear on the impact on code size and instruction cache
+
+Reviewer expertise
+------------------
+4. Expert: I have written one or more papers on this topic and/or I
+   currently work in this area.
+
+Reviewer confidence
+-------------------
+2. Medium: I understand much of the paper but not all of it.
+
+Novelty
+-------
+2. Incremental improvement.
+
+Overall Merit
+-------------
+2. On the fence, lean reject.
+
+Detailed Feedback for Authors
+-----------------------------
+The objective of the work is interesting. Avoiding checkpointing while providing whole-system persistency for execution recoverability could be attractive. The idea in the paper is easy to understand and appears different from those explored in prior work. The paper includes discussions on how the solution may apply to not only sequential but also parallel programs. The evaluation uses a good number of programs. 
+
+The paper however leaves some important aspects of the solution unclear. 
+
+## Compiler support
+
+The description of the compiler support in the paper is vague, leaving numerous questions unanswered. For instance, it is unclear how the compiler deals with compile-time unknowns (e.g., branches, function pointers), which would affect the definitions of regions. The paper mentions the use of LLVM as the base for the developed compiler support, but gives no further descriptions of the implementation. Because the definition is based on the number of store operations and register usage, it would not work if the compiler analysis works on the LLVM IR level, because the backend code generation has some significant impact on the store instructions and register usage in the binary code. At which level of code representation did you use LLVM for the compiler support? How did you ensure that the store counts are consistent with those in the final binary code? 
+
+## Persist operations
+
+The reviewer is not clear about the exact operations that happen at the boundary of a region. It seems that all the live-out registers must be stored into the persistent memory and all the store in the write-pending queues need to be flushed into the persistent memory. Are there any other operations? How are those operations materialized? I assume that they are through a combination of instructions inserted by the compiler and the hardware. Given that the size of region is limited to 32 entries, it is surprising that the overhead of those operations is that small. The asynchronous mechanism could help, but the reported overhead is still surprisingly small.
+
+## Regions size
+
+It may be problematic to claim that no overflow would happen as long as the region size is less than half of the WPQ. What if the persisting operations of a region is not done when the third region starts running? 
+
+## Others
+
+The introduction says PSP underperforms LightWSP by 51.2%. It could be misleading as it depends on how efficient the PSP is implemented. Previous papers have reported 10% overhead of persistent transactions when efficient logging is used ("SpecPMT: Speculative Logging for Resolving Crash Consistency Overhead of Persistent Memory" ASPLOS'2023).
+
+======= Post Rebuttal Comment =========
+The revision helped address some concerns. Your response on SpecPMT is however off. The 10% overhead of SpecPMT is relative to the runs that are subject to no transaction overhead. That is minor though.
+
+Questions for Authors to Address in Revision/Rebuttal
+-----------------------------------------------------
+Please respond to the questions on the compiler support, persist operations, and region size in the comment.
+
+Post-Revision/Rebuttal Overall Merit
+------------------------------------
+3. On the fence, lean accept.
+
+
+
+Review #146C
+===========================================================================
+* Updated: Jul 2, 2024
+
+Paper summary
+-------------
+This paper presents LightWSP, a compiler/hardware co-design that provides persistency for workloads. LightWSP leverages a Write Pending Queue (WPQ) as a redo log to eliminate the overhead associated with traditional redo-logging. It uses a front-end buffer to address WPQ size limitations and prevent overflow. The design defines persistent boundaries at compile time. Additionally, LightWSP introduces an inter-region asynchronous persistence mechanism to prevent performance degradation caused by store persistence stalls, ensuring consistency.
+
+Top Reasons to Accept the Paper
+-------------------------------
++ The writing is clear to understand the flow of paper
++ Evaluation is comprehensive; however, some parts should be improved.
+
+Top Reasons to Reject the Paper
+-------------------------------
+- Limited novelty; mechanisms are somewhat incremental. The design heavily relies on pre-existing ideas and solutions.
+ 
+- The multi-thread evaluation analysis could be further improved, like sensitivity analysis regarding number of threads and ratio between number of writes/reads.
+
+Reviewer expertise
+------------------
+4. Expert: I have written one or more papers on this topic and/or I
+   currently work in this area.
+
+Reviewer confidence
+-------------------
+3. High: I understand the key aspects of the paper to a great extent.
+
+Novelty
+-------
+2. Incremental improvement.
+
+Overall Merit
+-------------
+3. On the fence, lean accept.
+
+Detailed Feedback for Authors
+-----------------------------
+Thanks for submitting your work to MICRO. The problem of this work is well motivated with clear writing and quantitative motivational results.
+
+My primary concern revolves around the known issue of WPQ saturation, which negatively impacts scalability. First, to address the overhead associated with expensive instructions such as fences and flushes used in redo/undo logging, LightWSP leverages the WPQ as a redo-log for failure atomicity. To enhance performance, it employs a non-temporal data path. Many prior log-based persistent memory designs make log updates uncacheable to improve performance. Notably, the study "Logging in Persistent Memory: To Cache, or Not to Cache?" (MEMSYS '17) highlighted the challenges associated with uncacheable logs. I am wondering whether using a non-temporal data path in the LightWSP design might lead to underutilization of resources, as non-temporal stores are typically used for large writes.
+Second, LightWSP uses a front-end buffer to prevent WPQ overflow. In multi-threaded workloads, increasing the number of threads could lead to contention among threads, causing more evictions and potentially making the buffer itself a bottleneck, similar to the Optane buffer. While the authors provide a complete sensitivity analysis for buffer and WPQ sizes to mitigate this issue, increasing the size would also increase the required energy reserves to drain the WPQ during a power failure.
+
+LightWSP defines persistence regions during compile time based on the number of stores that can fit in half the WPQ size. Consequently, a maximum of two regions would fit in the WPQ? Alternatively, it will use an atomic failure boundary to define a region, which allows for more regions in the WPQ. Atomic failure boundaries vary in different concurrent workloads. Some workloads consist of many small transactions, while others include a small number of large transactions. This variability in workload characteristics affects the size of the regions. Understanding how various region sizes would affect the performance of LightWSP is an interesting aspect to explore. For instance, consider the multi-threaded version of the vacation workload in STAMP. This workload exhibits both low contention and high contention variations. Analyzing the performance of vacation in both configurations—low contention and high contention—would provide insights into LightWSP's performance under different workload scenarios.
+
+Another concern lies in the evaluation methodology, particularly regarding the multi-threaded benchmarks and workloads. Sensitivity analysis on the number of threads and read/write ratio in multi-threaded workloads has a direct impact on the performance of the design. Furthermore, the paper lacks sufficient configuration benchmark information for the experiments. Additionally, it would be intriguing to examine the performance of LightWSP in the multi-threaded version of STAMP benchmarks.
+
+
+Minors:
+page 4: stores are still held in WPO -> stores are still held in WPQ
+
+Questions for Authors to Address in Revision/Rebuttal
+-----------------------------------------------------
+Please see the above.
+
+Post-Revision/Rebuttal Overall Merit
+------------------------------------
+3. On the fence, lean accept.
+
+
+
+Review #146D
+===========================================================================
+* Updated: Jul 4, 2024
+
+Paper summary
+-------------
+This paper proposes LightWSP, a compiler-architecture co-design for Whole System Persistence. In contrast to prior work, this proposal uses existing battery-backed hardware buffers, i.e. the write pending queue, and eliminates in this way the costly redo-undo operations.
+
+Top Reasons to Accept the Paper
+-------------------------------
++ The proposal makes clever use of existing structures, leveraging them for new purposes. Thus, lightweight WSP is achieved without additional hardware.
++ The paper is well-written and easy-to-follow for non-experts. It clarifies the state-of-the-art and its limitations.
+
+Top Reasons to Reject the Paper
+-------------------------------
+- The stated contribution “inter-region asynchronous persistence“ is not a new concept. Not only is the concept of  overlapping data transfer/saving/persisting with computation widely used, e.g. even in GPU-CPU programming, but even state-of-the-art WSP systems persist data from one region in parallel with performing the computation of subsequent instructions.
+
+- The proposal only handles DRF code, which is ok, but the authors have to mention it upfront.
+
+- The implementation details are missing. Given the high-level of the description, it would be impossible to reproduce this work.
+
+Reviewer expertise
+------------------
+2. Some familiarity: I have a passing knowledge of this topic but do not
+   follow the relevant literature.
+
+Reviewer confidence
+-------------------
+3. High: I understand the key aspects of the paper to a great extent.
+
+Novelty
+-------
+3. New contribution.
+
+Overall Merit
+-------------
+3. On the fence, lean accept.
+
+Detailed Feedback for Authors
+-----------------------------
+The paper is very well written and discusses thoroughly the corner cases, it was a pleasure reading it. Below are more questions that address some of these details.
+
+To ensure no overflows in the write pending queue (WPQ) can lead to recovery failures, this proposal slices the input program into epochs, tailored at compile-time to fit the WPQ size. How is this approach avoiding the problems of PSP?
+
+“That way, compared to Capri persisting dirty 64-byte cachelines touched by stores, LightWSP greatly lowers the bandwidth requirement for the persist path by 8x.” It is not clear at this point in the paper, why LightWSP needs to persist 8x less data than Capri? LightWSP only backups the data that is stored, not the entire cacheline? Or the total amount of persisted data remains the same, but at a lower bandwidth? The answer comes late, in section A. Persist Data without JIT-Checkpointing.
+
+How is the WPQ partitioned to back-up different regions? Moreover, the regions were said to fit the WPQ size. Do several regions fit in the WPQ? Or as some stores of an earlier region are persisted, the free space is used to buffer the stores of a new region? How is this partitioning handled to ensure correct atomicity in case of failure? This is clarified late in the paper, making reading more difficult.
+
+“LightWSP drops the stores of those regions whose stores are not all contained in the WPQ and flushes the remaining WPQ entries to NVM, ensuring consistent NVM states.” How does LightWSP know if all the regions’ stores are in the WPQ or not?
+
+Both LightWSP and PPA employ existing hardware for a fast way to buffer data. The advantages and disadvantages of using the write pending queue versus the register file to buffer stores are spread across different sections of the paper, would be useful to draw a comparison one to one.
+What is the amount of data persisted by LightWSP compared to techniques that employ JIT-chekpointing?
+
+Section III.C: How does the compiler count the stores in the presence of complex control-flow, unknown loop counts, indirect function calls, etc? At which compiler level is this done, is register spilling taken into account? How are stores under conditional branches counted? How is the unroll factor determined? Is there a cost model associated to it? Otherwise, forced loop unrolling can harm performance.
+
+How does the granularity of the region impact performance? In other words, reducing the region size such that multiple regions can fit in the WPQ enables the inter-region async persistance, but increases checkpointing at region boundaries. Where is the sweet spot?“Interestingly, our evaluation revealed that it can achieve sufficient asynchronous persistence efficiency by simply setting the threshold as half the size of WPQ” Is this benchmark specific?
+
+“As a result, stores from different threads can arrive at the memory controllers in arbitrary order.” What happens when threads migrate or if multiple threads co-execute on the same core?
+What happens when non-DRF applications are executed?
+“We believe that LightWSP can simply handle I/O operations by checkpointing necessary status (e.g., before I/O operations start). That way, the interrupted I/O operations can be restarted after recovery.” Does this imply that it is actually not implemented?
+
+“for the multiple-MCs systems, there is a chance that only one memory controller receives the region boundary. In this case, other memory controllers that do not receive the region boundary cannot start their WPQ commit and also cannot update their region ID and flush ID correctly. To solve this problem, LightWSP lets the memory controller that receives the region boundary broadcast the boundary to other memory controllers as well so that other memory controllers can also start their draining procedure and update their IDs.” It is not clear how this prevents the MCs to drain stores from different regions? (This discussion would be useful for non-experts.)
+“However, in critical sections, even though multiple threads execute store instructions according to the happens-before order, the order in which these stores enter the memory controllers may be disrupted.” Why, given that threads execute the critical section sequentially?
+
+Questions for Authors to Address in Revision/Rebuttal
+-----------------------------------------------------
+Please see above.
+
+More details on the implementation details are welcome. Which compiler level do you work with, how is the communication between software and hardware established?
+
+Post-Revision/Rebuttal Overall Merit
+------------------------------------
+3. On the fence, lean accept.
+
+
+
+Review #146E
+===========================================================================
+
+Paper summary
+-------------
+The paper is about a technique for whole system persistence that works by making the write pending queue non-volatile, and then ensuring that program is broken up into pieces that make writes to few enough locations that the WPQ will not overflow.  The mechanism to make the WPQ non-volatile is to use a battery backup.  The advantage of the system is that the lightweight change to make the WPQ non-volatile can be made in systems that have multiple memory controllers and without adding a lot of extra buffering.  The technique provides ample improvements in the overheads to make the entire system non-volatile/persistent compared to other approaches to the problem that introduce consistency problems with multiple memory controllers and that have higher buffering requirements.
+
+Top Reasons to Accept the Paper
+-------------------------------
+Simple approach that solves a problem; if this problem is actually useful to solve, then this approach is a good take.
+
+Top Reasons to Reject the Paper
+-------------------------------
+Exposes microarchitectural details to the compiler (the amount of available buffering in the WPQ).  In making incremental revisions to an architecture's implementation, it isn't clear how it would be possible to have a compiler with a single source of truth for an architecture, or to have portably compiled binaries.
+
+Reviewer expertise
+------------------
+3. Knowledgeable: I used to work in this area and/or I try to keep up with
+   the literature but might not know the latest developments.
+
+Reviewer confidence
+-------------------
+2. Medium: I understand much of the paper but not all of it.
+
+Novelty
+-------
+3. New contribution.
+
+Overall Merit
+-------------
+2. On the fence, lean reject.
+
+Detailed Feedback for Authors
+-----------------------------
+The technique is a nice approach to a challenging problem.  The motivation is a little "boilerplate" and does not come with a fully worked, end-to-end motivation for introducing whole system persistence to an architecture.  If this problem is real and there is an actual need in the community/industry for whole system persistence, then this technique seems to be another new approach to achieving that goal.
+
+The biggest issue that I have with the technique is that exposing the size of the WPQ to the compiler breaks the architectural contract, making it difficult or impossible to create a portable binary.  Exposing this detail essentially requires recompilation of code, even if a binary is moving from one machine of an architecture to another machine of the same architecture.
+
+How does the compiler determine where to split regions?  If the region boundary implies writing all live-outs to memory somewhere, the cost of doing a region boundary could potentially be very high (needlessly so).  If the compiler tuned region boundaries to be a) valid cut points wrt the WPQ, but also b) minimal with respect to live-out count, the cost of region boundaries could be minimized.
+
+Are you assuming that every region boundary that is inserted for synchronization reasons is a full fence?  Or would more exotic primitives, such as per-location fences, or read-/write-specific fences also be allowed?  Would these fences need to be treated as full fences that (I assume) flushes the WPQ?
+
+Why not take advantage of alias information in the region formation process to coalesce stores to the same location into a single entry?  You're already strongly assuming data-race freedom for correctness by going directly to NVM via non-temporal memops, so this optimization would not introduce any additional, problematic reordering.
+
+
+
+Review #146F
+===========================================================================
+
+Paper summary
+-------------
+The paper investigates how to achieve whole-system persistence with low overhead. Toward this goal, the paper proposes LightWSP, which utilizes the non-temporal data path and region-based recovery mechanism to provide whole-system persistence. Furthermore, LightWSP ensures failure atomicity by backing up the write pending queue in the memory controller with a battery. The paper evaluates LightWSP in the context of 38 applications from SPEC CPU2006/2017, SPLASH3, STAMP, NPB, and WHISPER to show that LightWSP incurs an average run-time overhead of 9%.
+
+Top Reasons to Accept the Paper
+-------------------------------
+- Strong evaluation with a large number benchmarks from SPEC CPU2006/2017, SPLASH3, STAMP, NPB, and WHISPER.
+
+- Interesting approach to utilize the non-temporal data path for persistence
+
+- Inter-region asynchronous persistence seems effective in practice
+
+Top Reasons to Reject the Paper
+-------------------------------
+- It is somewhat difficult to understand the novel contributions of the paper
+
+- It is not clear how practical the technique is in real-world
+
+Reviewer expertise
+------------------
+2. Some familiarity: I have a passing knowledge of this topic but do not
+   follow the relevant literature.
+
+Reviewer confidence
+-------------------
+2. Medium: I understand much of the paper but not all of it.
+
+Novelty
+-------
+2. Incremental improvement.
+
+Overall Merit
+-------------
+3. On the fence, lean accept.
+
+Detailed Feedback for Authors
+-----------------------------
+Thanks for submitting your work to MICRO. I learned several new concepts, such as whole system persistence and non-temporal data path, from reading your paper. In particular, I appreciate the following parts of the paper a lot:
+
+- Partitioning the program across different regions
+
+- Achieving persistence across regions asynchronously
+
+- Persistency across multiple threads
+
+- Detailed sensitivity analysis across different parameters, including WPQ size, cache replacement policy, bandwidth, and CXL
+
+- Overhead analysis across different metrics such as snooping protocol, LLC cache miss handling, McPat-based hardware cost, dynamic instruction counts
+
+My main concerns about the paper are as follows:
+
+- My first comment is about the paper's main contributions. As non-experts, we could not pinpoint the novelty of this work. It seems that the novel contributions of this work are (1) leveraging non-temporal data path for persistence and (2) asynchronous region-based recovery mechanism. If the authors could clearly specify LightWSP's key contributions, the paper would be significantly improved.
+
+- The paper mentions, "LightWSP leverages the battery-backed write pending queue (WPQ)—as assumed by Intel ADR—in memory controller (MC) as a redo buffer to achieve failure atomicity for all kinds of applications." I am not sure how practical this assumption is in a real-world scenario. As the paper later specifies, a large body of prior work focused on achieving persistence through battery-backed DRAM. Unfortunately, such techniques have several limitations, such as battery size and scalability issues, as mentioned in the paper. This paper could make an even more compelling case for LightWSP by evaluating it in terms of battery size and WPQ scalability, which will also show that LightWSP is practical.
+
+- LightWSP leverages Intel's non-temporal data path to achieve whole-system persistence. As the paper mentions, this non-temporal data path is restricted to only a few SIMD instructions. Consequently, LightWSP may have to replace regular instructions for memory accesses with SIMD equivalents to achieve whole-system persistence. Would there be any overhead for using SIMD instructions instead of regular ones?
+
+Questions for Authors to Address in Revision/Rebuttal
+-----------------------------------------------------
+- What are LightWSP's novel contributions?
+
+- How does LightWSP ensure the practicality of battery-backed write pending queue?
+
+- What is the overhead of SIMD non-temporal instructions LightWSP employs?
+
+
+
+Response by Author [Yuchen Zhou <zhou1166@purdue.edu>] (1480 words)
+---------------------------------------------------------------------------
+We appreciate reviewers' thoroughness. Please see our revision in red text.
+
+### Q1-Reviewer-A,B,C,E: WPQ overflow and deadlock?
+Theoretically, WPQ overflow could happen in two cases but only the second case could cause deadlock.
+
+(1) WPQ is full of previous regions' stores and thus the current region's cannot enter WPQ. In this case, the current region needs to wait for WPQ to free space by flushing some entries. However, in our evaluation, we barely see such a case because of our compile-time store threshold setting and run-time inter-region parallelism. 
+
+(2) WPQ overflow could also happen provided many cores send stores to WPQ simultaneously. In such a case, every core may have only partial stores of each region in WPQ, i.e., WPQ cannot initiate its flushing until receiving a region boundary, in which case the deadlock could happen unless special care is taken. We forgot to mention this; our apologies---though LightWSP has already taken care of this.
+
+In fact, to avoid deadlock upon the overflow, LightWSP indeed flushes those WPQ entries of the region---corresponding to the current flush ID of the memory controller---with them undo-logged. In case of a power outage thereafter, even though PM has been updated, program can correctly resume via restoring the original memory values based on undo logging consultation. That said, WPQ overflow is very rare, i.e., we only see 1.9 overflows per 10k instructions under a 64-core configuration; so the resulting undo logging turns out to be negligible.
+
+### Q2-Reviewer-D: Correctness for thread migration?
+No such issue. By using the section ID, LightWSP guarantees the correct persistence order---which follows the happen-before order among threads---for thread migration cases and multiple threads co-executing on the same core.
+
+### Q3-Reviewer-B: Why good performance?
+Unlike previous work whose persistence is from the CPU to PM, LightWSP's persistence is from WPQ to its neighboring PM which takes a shorter time. As depicted in Section V-F-4, our average store number per region is 11.29 and the average region size is 91.33. Such a region size is able to hide the WPQ flush latency with our inter-region parallelism.
+
+### Q4-Reviewer-B,D,E: Compiler implementation details?
+Please see the revised Section IV.A.
+
+### Q5-Reviewer-E: Tuned region boundaries?
+We appreciate this insight. In our evaluation, we found out that as we increase the region size, the proportion of checkpoint stores in each region decreases. However, when further enlarging the region size, the number of checkpoint stores almost remains the same. That said, we implemented this idea in our compiler but did not see a clear difference.
+
+Another thing is that we already leveraged checkpoint pruning techniques in our compiler as prior work [45] does. This technique omits the checkpoint if register values can be reconstructed using other checkpointed values. In this way, we reduce the live-out checkpoint stores. As a result, they only occupy around 17% of the stores. Thus, the cost of doing a region boundary is not high.
+
+### Q6-Reviewer-E: Exposing WPQ size to the compiler breaks the architectural contract?
+We admit this is our limitation. However, existing production compilers such as GCC and LLVM already require microarchitecture details, e.g., pipeline implementation, to let instruction scheduling generate better machine code.
+
+### Q7-Reviewer-A,D: How can multiple threads concurrently write to the same addresses within a critical section? 
+No. They cannot since data-race-free program serializes the conflicting writes across the threads. Nevertheless, the happen-before order of executing the writes might not match their persistence order due to the non-uniform memory access (NUMA) effect of multiple memory controllers. That is, since the distance from each core to the same memory controller is different, the resulting core-to-memory latency varies across the cores.
+
+### Q8-Reviewer-B: Misleading performance benefit over PSP?
+LightWSP achieves 51.2% performance speedup owing to enabling DRAM cache, which is impossible or at least challenging in PSP including SpecPMT [91]; its 10% is from the comparison against other PSP schemes like Intel PMDK and EDE; ISCA'21.
+
+### Q9-Reviewer-B: Require other persist operations at each region end?
+No other operations are required. The stores of a region including regular stores and checkpoint stores are all sent to WPQ via the non-temporal data path. In addition, our compiler inserts a region boundary instruction at each region end which is also counted as a specific store and is also sent to WPQ. When WPQ receives a region boundary, indicating the finish of the corresponding region, it then flushes all the stores (except for the region boundary) within that region to PM.
+
+### Q10-Reviewer-A: what happens on LLC miss that hits in the WPQ? 
+Upon a WPQ hit, the memory controller can still service other LLC miss requests as already implemented in the gem5 simulator; See Section IV-G in the revision.
+
+### Q11-Reviewer-A,F: Only persist vector writes and its overhead? 
+No. LightWSP does not incur such an overhead since LightWSP's persist path already supports 8-byte writes, meaning that any 8-byte data stored can be directly sent to
+the persist path; vector writes are broken down into multiple 8-byte pieces as the default implementation in gem5.
+
+### Q12-Reviewer-E: Is every region boundary a full fence? Would more exotic primitives also be allowed? Would these fences need to be treated as full fences?
+It's a regular store fence used in epoch persistence [68]. Only the synchronization primitives related to stores, e.g., atomics and sfences, are treated as region boundaries while others are not. 
+
+### Q13-Reviewer-E: Coalesce stores with alias information?
+We appreciate this insight. However, we expect such a coalescing leads to limited performance speedup since Figure 11 in the revision shows that: (1) a 64-entry WPQ already achieves high performance, and (2) enlarging WPQ size by 4x to 256 leads to negligible performance improvement for most of the benchmarks.
+
+### Q14-Reviewer-D: How does WPQ-size guided region partition solve the problems of PSP?
+LightWSP compiler transparently partitions any input program into a series of recoverable regions, while PSP requires programmers to rewrite program source code with persistency model and recovery code in mind.
+
+### Q15-Reviewer-D: Is store threshold benchmark-specific?
+Yes. we set our threshold based on our evaluation. For other programs with different properties, maybe half of the WPQ size is not the best option, but we can still tune our store threshold to adapt to it by recompiling the program.
+
+### Q16-Reviewer-D: How does boundary broadcast prevent the MCs from draining stores from different regions?
+We apologize for the misleading. This technique is not to prevent MCs from draining stores from different regions. Instead, for a specific region, this technique is to ensure all MCs can start their own WPQ draining as soon as possible when at least one of the MCs receives the region boundary.
+
+### Q17-Reviewer-C: Sensitivity to thread count?
+Yes, we do a sensitivity analysis around the number of threads and WPQ overflow as shown in V-E-(4).
+
+### Q18-Reviewer-C: The performance of STAMP-vacation with low-contention and high-contention inputs?
+Please see the Section V-E-(4) in our revision.
+
+### Q19-Reviewer-F: LightWSP's key contributions?
+See the end of Section I in the revision.
+
+### Q20-Reviewer-F: Battery size and WPQ scalability.
+See Section V-E in the revision.
+
+### Q21-Reviewer-C,D: Impact of region size on performance?
+We add a sensitivity analysis regarding the region size in Figure 12. According to our results, setting the threshold to half of the WPQ size shows the best performance. 
+
+### Q22-Reviewer-A: Region size?
+The average region size is 91.33 as Section V-F-4 shows.
+
+### Q23-Reviewer-A: Paths from all cores to all WPQs?
+Yes.
+
+### Q24-Reviewer-D: How to know if all the regions’ stores are in the WPQ? 
+LightWSP knows this by identifying the region boundary as we answered in Q3.
+
+### Q25-Reviewer-A: Deal with atomic instructions?
+They are treated as region boundaries as described in section III-E. 
+
+### Q26-Reviewer-A: Will your compiler and simulator be open-sourced on publication? 
+We plan to open the code.
+
+### Q27-Reviewer-A: Sequential STAMP programs?
+We apologize for the typo as they are indeed evaluated with 8 cores by default; We fixed this typo in the revision.
+
+### Q28-Reviewer-A: Where 12.56% higher asynchronous persistence efficiency come from?
+We get 12.56% from (LightWSP efficiency - PPA efficiency)/(PPA efficiency).
+
+### Q29-Reviewer-C: Underutilization of the persist path?
+No, it does not since we don't leverage the non-temporal data path as in its original case which enables write combining buffer (WCB). Instead, we bypass the WCB and thus we don't have underutilization issues.
+
+### Q30-Reviewer-C: Only two regions in the WPQ?
+No. The store count in each region is not exactly the same as the store threshold. Our average store number in each region is 11.23, thus there could be multiple regions in WPQ.
+
+### Q31-Reviewer-D: Amount of data JIT checkpointed by LightWSP and PPA?
+LightWSP JIT checkpoints only 512B data which is about 4x reduction from PPA's 1838B.
+
+### Q32-Reviewer-D: I/O recovery not implemented?
+Yes, we didn't implement the mechanism that checkpoints enough status for I/O recovery. That said, our compiler partitions all I/O functions to correctly simulate the run-time overhead.
+
+### Q33-Reviewer-D: Non-DRF program?
+We don't provide a crash consistency guarantee for the buggy (non-DRF) code. 
+
+### Q34-Reviewer-A: Do we really need two decimal places in ILP?
+We fix this in our revision.
+
+
+
+Comment @A1 by Reviewer B
+---------------------------------------------------------------------------
+The reviewers agreed that the revision has addressed some of the main concerns about the work. The answer to SpecPMT is however wrong; the 10% overhead is relative to the run without transaction. There is still some concern on the many uarch details exposed for the hwsw co-design. Overall, the committee felt that the work makes some good contributions and would like to see the paper presented at the conference.

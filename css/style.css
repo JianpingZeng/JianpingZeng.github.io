@@ -7,6 +7,7 @@ padding: 0px;
 body {
 	#font-family: Gill Sans,Gill Sans MT,Calibri,sans-serif; 
   #font-family: Calibri, Verdana, Helvetica, Arial;
+  font-family: Trebuchet MS;
   background-color: White;
   font-size: 14pt;
 }
@@ -85,13 +86,13 @@ text-decoration: none;
 
 #container {
 position: absolute;
-left: 28%;
-right: 15%;
+left: 30%;
+right: 10%;
 top: 0px;
 margin-top: 5px;
 margin-bottom: 5px;
 margin-left: -100px;
-width: 1000px;
+width: 950px;
 clear: both;
 border-left: 2px solid Black;
 border-right: 2px solid Black;
