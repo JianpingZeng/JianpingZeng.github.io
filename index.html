@@ -20,6 +20,10 @@
               padding: 1em !important;
           }
       }
+      .pace-container { display: flex; align-items: flex-start; gap: 20px; }
+      .pace-text { flex: 1; }
+      .pace-image { max-width: 350px; }
+      .pace-image img { width: 100%; height: auto; border-radius: 10px; }
     </style>
 </head>
 <body> 
@@ -46,7 +50,8 @@
 <h2 id="biography">Biography</h2>
 
 <p>
-I am a computer architecture researcher in the <a
+I will be joining the School of Computing and Augmented Intelligence (SCAI) at ASU as a tenure-track
+Assistant Professor in Fall 2025. I am now a computer architecture researcher in the <a
 href="https://semiconductor.samsung.com/us/about-us/us-office/us-r-and-d-labs/memory-labs/">Samsung
 Memory Solutions Lab (MSL)</a> with a Ph.D. degree in Computer Science from
 <a href="https://cs.purdue.edu/">Purdue University</a> where I was fortunately
@@ -60,44 +65,46 @@ used in network switch, printer, etc) of
 <hr>
 </br>
 <div style="color: red;">
-<em>I will be joining the <a href="https://scai.engineering.asu.edu/" style="font-weight: bold; color: inherit;">
-School of Computing and Augmented Intelligence (SCAI) at Arizona State University (ASU)</a> as a
-tenure-track assistant professor in Fall 2025. I am looking for self-motivated PhD students to start in Fall 2025 or
+I am looking for self-motivated PhD students to start in Fall 2025 or
 Spring/Fall 2026. Potential research projects include software/hardware co-design for performance and
-reliability issues of CPUs/GPUs/Memory systems. Please send me an email with your CV, transcript, and English test
+reliability issues of CPUs/GPUs/memory systems. Please send me an email with your CV, transcript, and English test
 report, if you are interested in working with me. </em>
 </div>
 </br>
 <hr>
 
 <h2 id="research">Research</h2>
-<p>
-My research interest lies in compiler and computer architecture. Specifically, I aim to co-design compiler and computer
-architecture to address performance and reliability issues of CPUs/GPUs/memory systems for modern complex workloads.
-As a computer architecture researcher in the Samsung MSL, I work on
-hardware/software co-design for high-performance memory products, e.g., CXL (Computing eXpress Link)-based
-memory and processing-in-memory (PIM). While I was a Ph.D. student at
-Purdue University, I designed reliable and performant
-computing systems, ranging from embedded systems to server-class systems,
-against soft errors and crash consistency issues resulting from power failures.
-To achieve that, I usually co-design compilers and architectures to maintain
-minimal hardware complexity while achieving high performance. My research works
-are typically published at top-tier conferences in the fields of computer
-architecture, high-performance computing (HPC), and programming languages, e.g.,
-ISCA, MICRO, ICS, HPDC, and PLDI.
+  <div class="pace-container">
+      <div class="pace-text">
+          <p>At ASU, I lead the <a href="">Phoenix Architecture and Compiler Exploration (PACE) Lab</a>, focusing on
+          compiler and computer architecture. Specifically, my lab aims to co-design compilers and computer
+          architectures, addressing performance and reliability issues of CPUs/GPUs/memory systems for modern complex
+          workloads, e.g., HW/SW co-design for energy harvesting systems, data centers, and CXL (Computing eXpress
+          Link)-based memory. My dissertation focuses on designing reliable and performant computing
+          systems&mdash;ranging from embedded systems to server-class systems&mdash;against soft errors and crash
+          consistency issues resulting from power failures. My research philosophy is grounded in HW/SW co-design,
+          driven by application-level demand. My research work is typically published at top-tier conferences in the
+          fields of computer architecture, high-performance computing (HPC), and programming languages, e.g., ISCA,
+          MICRO, ICS, and PLDI.</p>
+      </div>
+      <div class="pace-image">
+        <img src="images/logo.jpg" alt="PACE Lab Figure">
+      </div>
+  </div>
 </br>
 
-</br>
 5 first-author publications in top computer architecture/HPC conferences: (1) <a href="https://microarch.org/micro54/index.php">MICRO'21x2</a>, (2) <a href="https://microarch.org/micro56/index.php">MICRO'23</a>, (3) <a href="https://iscaconf.org/isca2024">ISCA'24</a>, (4) <a href="https://ics2024.github.io/">ICS'24</a>.
 </br>
 7 second-author publications in top computer system conferences: (1) <a href="https://pldi20.sigplan.org/">PLDI'20</a>, (2) <a href="https://www.hpdc.org/2022/">HPDC'22</a>, (3) <a href="https://iscaconf.org/">ISCAx2</a>, (4) <a href="https://microarch.org/">MICROx2</a>, (5) <a href=""https://2023.rtss.org/>RTSS'23</a>.
 </li>
 
+</br>
 <br>
 <h2 id="news">News</h2>
 <ul>
 <li>
 May 2025: Invited to serve on the program committee (PC) of <a href="https://2026.cgo.org/">CGO 2026</a>
+and <a href="https://hpca-conf.org/2026/">HPCA 2026</a>
 </li>
 <font color="red">
 <li>
@@ -418,10 +425,19 @@ February 2020: One paper (Penny) accepted to PLDI 2020
 
   <li>Program Committee</br>
     <ul>
-      Principles and Practice of Parallel Programming (PPoPP): 2025 (PC)
+      International Symposium on Computer Architecture (ISCA): 2025 (LPC)
     </ul>
     <ul>
-      International Symposium on Computer Architecture (ISCA): 2025 (LPC)
+      International Symposium on Microarchitecture (MICRO): 2025 (PC)
+    </ul>
+    <ul>
+      International Symposium on Code Generation and Optimization (CGO): 2026 (PC)
+    </ul>
+    <ul>
+      International Symposium on High-Performance Computer Architecture (HPCA): 2026 (PC)
+    </ul>
+    <ul>
+      Principles and Practice of Parallel Programming (PPoPP): 2025 (PC)
     </ul>
     <ul>
       International Conference on Supercomputing (ICS): 2025 (PC)
@@ -430,13 +446,7 @@ February 2020: One paper (Penny) accepted to PLDI 2020
       International Conference on Computing Frontiers (CF): 2025 (PC)
     </ul>
     <ul>
-      International Symposium on Microarchitecture (MICRO): 2025 (PC)
-    </ul>
-    <ul>
       Languages, Compilers, Tools and Theory of Embedded Systems (LCTES): 2025 (PC)
-    </ul>
-    <ul>
-      International Symposium on Code Generation and Optimization (CGO): 2026 (PC)
     </ul>
   </li>
   <li>Journal Reviewer</br> 
