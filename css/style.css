@@ -83,16 +83,14 @@ a, a:visited, a:hover, a:active {
 color: Blue;
 text-decoration: none;
 }
-
 #container {
 position: absolute;
-left: 30%;
-right: 10%;
+left: 46%;
 top: 0px;
 margin-top: 5px;
 margin-bottom: 5px;
-margin-left: -100px;
-width: 950px;
+margin-left: -400px;
+width: 900px;
 clear: both;
 border-left: 2px solid Black;
 border-right: 2px solid Black;
