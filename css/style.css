@@ -9,13 +9,13 @@ body {
   #font-family: Calibri, Verdana, Helvetica, Arial;
   font-family: Trebuchet MS;
   background-color: White;
-  font-size: 14pt;
+  font-size: 1.7vh;
 }
 
 
 li { 
   margin-left: 0em;
-  font-size: 14pt;
+  font-size: 1.7vh;
   list-style-position: inside;
 }
 
@@ -34,17 +34,17 @@ ol {
 
 strong {
 	font-weight: bold;
-	font-size: 14pt;
+	font-size: 1.7vh;
 	color: Black;
 }
 
 code {
-	font-size: 12pt;
+	font-size: 1.46vh;
 	color: Black;
 }
 
 h3 {
-font-size: 14pt;
+font-size: 1.7vh;
 font-weight: bold;
 padding-top: 1em;
 color: Black;
@@ -52,13 +52,13 @@ color: Black;
 
 
 h2 {
-font-size: 16pt;
+font-size: 1.94vh;
 font-weight: bold;
 color: Black;
 }
 
 h1 {
-font-size: 14pt;
+font-size: 1.7vh;
 font-weight: bold;
 color: Black
 }
@@ -68,7 +68,7 @@ padding-bottom: .5em;
 }
 
 title {
-font-size: 14pt;
+font-size: 1.7vh;
 font-weight: bold;
 color: Blue
 }
@@ -76,7 +76,7 @@ color: Blue
 hr {
 color: Black;
 height: 0.05px;
-margin-bottom: 13px;
+margin-bottom: 1.58vh;
 }
 
 a, a:visited, a:hover, a:active {
@@ -89,9 +89,8 @@ left: 46%;
 top: 0px;
 margin-top: 5px;
 margin-bottom: 5px;
-margin-left: -400px;
-width: 900px;
-clear: both;
+margin-left: -20%;
+width: 48vw;
 border-left: 2px solid Black;
 border-right: 2px solid Black;
 border-top: 2px solid Black;
@@ -100,9 +99,9 @@ border-bottom: 2px solid Black;
 
 #content {
 background: white none;
-padding-left: 20px;
-padding-right: 20px;
-padding-top: 20px;
-padding-bottom: 20px;
+padding-left: 1%;
+padding-right: 1%;
+padding-top: 1%;
+padding-bottom: 1%;
 }
 

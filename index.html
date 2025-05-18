@@ -10,28 +10,38 @@
   <title>Jianping Zeng</title>
     <style type="text/css" title="currentStyle"> 
     @import "css/style.css";
+
+    .pace-container { display: flex; align-items: flex-start; gap: 20px; }
+    .pace-text { flex: 1; }
+    .pace-image { max-width: 350px; }
+    .pace-image img { width: 100%; height: auto; border-radius: 10px; }
+    .headshot-container { max-width: 185px; border: 15%; padding:5px; }
+    .headshot-container img {width: 100%; }
+
+    @media (max-width: 480px) {
+        #container {
+            width: 95%; /* Full width on smaller screens */
+            left :22%;
+       }
+       .pace-image {max-width: 120px; }
+       .pace-image img {
+           width: 100%;
+       }
+       .headshot-container {max-width: 120px; padding: 2px; }
+       .headshot-container img { width: 100%; }
+    }
   </style>
   <link rel="icon" type="image/png" href="images/favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-      @media (max-width: 767.98px) {
-          .navbar-toggler {
-              font-size: 0.8em !important;
-              padding: 1em !important;
-          }
-      }
-      .pace-container { display: flex; align-items: flex-start; gap: 20px; }
-      .pace-text { flex: 1; }
-      .pace-image { max-width: 350px; }
-      .pace-image img { width: 100%; height: auto; border-radius: 10px; }
-    </style>
 </head>
 <body> 
 <div id="container"> 
 <div id="content"> 
 
 <div style='float: left;'>
-  <img src='images/jpzeng.jpeg' height=182px style="float:left; border: 15%; padding:5px">
+  <div class="headshot-container">
+    <img src='images/jpzeng.jpeg' style="float:left;">
+  </div>
 </div>
 
 <h1>Jianping Zeng</h1>
