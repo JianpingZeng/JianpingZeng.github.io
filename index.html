@@ -13,68 +13,62 @@
 
     .pace-container { display: flex; align-items: flex-start; gap: 20px; }
     .pace-text { flex: 1; }
-    .pace-image { max-width: 350px; }
+    .pace-image { max-width: 23px; }
     .pace-image img { width: 100%; height: auto; border-radius: 10px; }
-    .headshot-container { max-width: 185px; border: 15%; padding:5px; }
+    .headshot-container { max-width: 17px; border: 15%; padding:5px; }
     .headshot-container img {width: 100%; }
 
-    @media (max-width: 480px) {
+    @media all and (max-width: 6.9in) {
         #container {
             width: 95%; /* Full width on smaller screens */
             left :22%;
        }
-       .pace-image {max-width: 120px; }
+       .pace-image {max-width: 15vh; }
        .pace-image img {
            width: 100%;
        }
-       .headshot-container {max-width: 120px; padding: 2px; }
+       .headshot-container {max-width: 23vh; padding: 2px; }
+       .headshot-container img { width: 100%; }
+    }
+    @media all and (min-width: 10in) {
+        #container {
+            width: 45%;
+            left :22%;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            margin-left: 5%;
+       }
+       .pace-image {max-width: 23vh; }
+       .pace-image img {
+           width: 100%;
+       }
+       .headshot-container {max-width: 17vh; padding: 2px; }
        .headshot-container img { width: 100%; }
     }
 
-    @media (max-width: 1500px) {
-        #container {
-            width: 45%; 
-            left :22%;
-            margin-top: 5px;
-            margin-bottom: 5px;
-            margin-left: 5%;
-       }
-       .pace-image {max-width: 180px; }
-       .pace-image img {
-           width: 100%;
-       }
-       .headshot-container {max-width: 120px; padding: 2px; }
-       .headshot-container img { width: 100%; }
+    @media print {
+        #container{
+            position: relative;
+            left: 0%;
+            right: 0%;
+            margin-right: -10%;
+            width: 92%;
+        }
+        .pace-image {max-width: 22vh; }
+        .headshot-container {max-width: 12vh; padding: 2px; }
+        body { font-size: 1.2vh; }
+        li { font-size: 1.2vh; }
+        strong { font-size: 1.2vh; }
+        code { font-size: 0.9vh; }
+        h3 { font-size: 1.2vh; }
+        h2 { font-size: 1.45vh; }
+        h1 { font-size: 1.2vh; }
+        title { font-size: 1.2vh; }
     }
-    @media (max-width: 2000px) {
-        #container {
-            width: 45%;
-            left :22%;
-            margin-top: 5px;
-            margin-bottom: 5px;
-            margin-left: 5%;
-       }
-       .pace-image {max-width: 180px; }
-       .pace-image img {
-           width: 100%;
-       }
-       .headshot-container {max-width: 153px; padding: 2px; }
-       .headshot-container img { width: 100%; }
-    }
-    @media (max-width: 3100px) and (min-width: 2000px) {
-        #container {
-            width: 45%;
-            left :22%;
-            margin-top: 5px;
-            margin-bottom: 5px;
-            margin-left: 5%;
-       }
-       .pace-image {max-width: 165px; }
-       .pace-image img {
-           width: 100%;
-       }
-       .headshot-container {max-width: 123px; padding: 2px; }
-       .headshot-container img { width: 100%; }
+    @page {
+          @bottom-center {
+              content: counter(page);
+          }
     }
   </style>
   <link rel="icon" type="image/png" href="images/favicon.png">
