@@ -30,7 +30,7 @@
        .headshot-container {max-width: 23vh; padding: 2px; }
        .headshot-container img { width: 100%; }
     }
-    @media all and (min-width: 10in) {
+    @media all and (max-width: 16in) {
         #container {
             width: 45%;
             left :22%;
@@ -42,10 +42,25 @@
        .pace-image img {
            width: 100%;
        }
-       .headshot-container {max-width: 17vh; max-height:20vh; padding: 2px; }
+       .headshot-container {max-width: 14vh; max-height:20vh; padding: 7px; }
        .headshot-container img { width: 100%; }
     }
 
+    @media all and (min-width: 16.1in) {
+        #container {
+            width: 45%;
+            left :22%;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            margin-left: 5%;
+       }
+       .pace-image {max-width: 23vh; }
+       .pace-image img {
+           width: 100%;
+       }
+       .headshot-container {max-width: 10vh; max-height:20vh; padding: 7px; }
+       .headshot-container img { width: 100%; }
+    } 
     @media print {
         #container{
             position: relative;
@@ -55,7 +70,7 @@
             width: 95%;
         }
         .pace-image {max-width: 14vh; }
-        .headshot-container {max-width: 12vh; padding: 2px; }
+        .headshot-container {max-width: 8vh; padding: 2px; }
         body { font-size: 1.2vh; }
         li { font-size: 1.2vh; }
         strong { font-size: 1.2vh; }
@@ -82,12 +97,11 @@
 
 <div style='float: left;'>
   <div class="headshot-container">
-    <img src='images/jpzeng.jpeg' style="float:left;">
+    <img src='images/headshot.png' style="float:left;">
   </div>
 </div>
 
 <h1>Jianping Zeng</h1>
-</br>
 <!---<I><h3>Ph.D. in Computer Science</h3></I>--->
 <table style="width:78%">
     <tr>
@@ -108,8 +122,6 @@
         <td>jpzeng (at) asu (dot) edu</td>
     </tr>
 </table>
-
-<br>
 
 <!---
 <br/>
